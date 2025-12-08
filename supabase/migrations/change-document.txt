@@ -1,0 +1,227 @@
+________________________________________
+Software Requirements Specification (SRS)
+Housekeeping, Inventory & Linen Management System
+Platform: Web Application + Mobile PWA (Arabic + English)
+________________________________________
+1. Introduction
+1.1 Purpose
+This SRS defines the functional and non-functional requirements for a simplified Housekeeping, Inventory, and Linen Management system designed for organizations with untrained or minimally trained staff. The goal is to digitize operational activities that are currently executed completely manually (receipts, issues, stock tracking, linen logging, room allocation, guest requests, complaints, etc.).
+1.2 Scope
+The system will provide:
+•	Consumable & equipment inventory tracking
+•	Linen stock management and laundry cycle tracking
+•	Housekeeping room assignment, cleaning workflow & supervisor inspection
+•	Guest request and breakdown logging with routing
+•	Supervisory dashboards & reports
+•	Web Admin Panel (Supervisor / Management)
+•	Mobile PWA (for HK staff) with full Arabic interface
+The system must remain simple, fast, and usable by laymen.
+1.3 Users
+•	Admin / Management
+•	Housekeeping Supervisor
+•	Housekeeping Staff
+•	Linen Attendant
+•	Maintenance Staff (for breakdown requests)
+1.4 Definitions
+•	PWA: Progressive Web App
+•	Inventory Item: Consumable or equipment
+•	Linen Item: Bedsheets, pillows, towels, duvets, etc.
+•	Transaction: Receive / Issue / Damage / Discard
+________________________________________
+2. System Overview
+The system consists of two applications:
+1.	Web Admin Panel – Supervisors and management use this to manage inventory, linen, staff, assignments, and reports.
+2.	Mobile PWA (Arabic Default) – Used by staff to update room cleaning status, issue/receive stock, report breakdowns, and submit linen counts.
+Both apps sync with a cloud backend database (e.g., Supabase or Firebase).
+________________________________________
+3. Functional Requirements
+________________________________________
+3.1 Inventory Management Module
+3.1.1 Current Pain Points
+•	All inventory operations (receipt, issue, usage tracking) are manual, undocumented, and error-prone.
+•	No real-time stock visibility.
+•	No tracking of who used which item for which room.
+•	No reorder alerts.
+3.1.2 Requirements
+FR-INV-01: Add and Manage Inventory Items
+•	Admin can add item name, category, unit, current quantity, par level (minimum stock), and whether it is linen or consumable.
+FR-INV-02: Receive Stock
+•	Staff must be able to record receipt of new stock with:
+o	Item
+o	Quantity
+o	Supplier/Source
+o	Optional: Room or Staff (if immediately issued)
+FR-INV-03: Issue Stock
+•	Staff can issue items to:
+o	Housekeeping staff
+o	Specific rooms
+o	Maintenance staff
+•	Each issue must log:
+o	Item, Quantity
+o	Issued To
+o	Room (if applicable)
+o	Time & user
+FR-INV-04: Real-Time Stock View
+•	System displays real-time stock with:
+o	Item name
+o	Quantity
+o	Status: OK / LOW / OUT
+FR-INV-05: Reorder Alerts
+•	System generates alerts when stock < par level.
+•	Alerts shown on dashboard & can be sent by email/WhatsApp.
+FR-INV-06: Damage / Discard Logging
+•	Staff can mark an item as damaged.
+•	Supervisor approves discarding.
+________________________________________
+3.2 Linen Management Module
+3.2.1 Current Pain Points
+•	Linen receipts, issues, soiled counts, laundry tracking, and discard logging are fully manual.
+•	No visibility of clean vs soiled vs in-laundry.
+•	No tracking of room-wise linen issuance.
+3.2.2 Requirements
+FR-LIN-01: Linen Item Master
+•	Define type of linen: bedsheet, pillow cover, towel, duvet, etc.
+•	Set par levels room-wise.
+FR-LIN-02: Linen Issue to Rooms
+•	Linen attendant selects:
+o	Room number
+o	Linen type
+o	Quantity
+•	System logs issuance.
+FR-LIN-03: Soiled Linen Collection
+•	Staff logs linen sent to laundry:
+o	Item type
+o	Quantity
+o	Batch number (auto-generated)
+FR-LIN-04: Laundry Return Logging
+•	Staff records:
+o	Clean linen received
+o	Shortages
+o	Damaged or torn items
+FR-LIN-05: Discard Approval
+•	Torn/damaged linen shown in “pending discard” list.
+•	Supervisor approves before removal from stock.
+FR-LIN-06: Linen Dashboard
+•	Clean stock
+•	Soiled stock
+•	In-laundry stock
+•	Reorder needs
+•	Daily linen movement report
+________________________________________
+3.3 Housekeeping Operations Module
+3.3.1 Current Pain Points
+•	Room assignment is verbal/manual.
+•	No tracking of “In Progress”, “Completed”, “Pending Inspection”.
+•	Guest complaints get missed.
+•	No compliance logs vs SOPs.
+3.3.2 Requirements
+FR-HK-01: Room Assignment
+•	Supervisor assigns rooms to housekeeping staff.
+•	Staff gets assignment instantly on PWA.
+FR-HK-02: Staff Room Status Updates
+Staff can mark:
+•	Not Started
+•	Start Cleaning
+•	In Progress (auto when timer runs)
+•	Completed
+FR-HK-03: Supervisor Inspection
+•	When a room is marked “Completed”, supervisor receives notification.
+•	Inspection checklist must be completed for approval.
+FR-HK-04: Issue/Bug Reporting Within Room
+•	Staff can report:
+o	AC not cooling
+o	Plumbing issue
+o	Electrical issue
+o	Broken furniture
+•	Medical/critical issues flagged separately.
+FR-HK-05: Guest Request Logging
+Guest requests are registered with:
+•	Room number
+•	Type of request (cleaning / towel / maintenance / special request)
+•	Assigned staff
+•	Completion feedback
+FR-HK-06: Housekeeping Dashboard
+Supervisor views:
+•	Live status of all rooms
+•	Staff workload
+•	Average cleaning time
+•	Pending inspections
+•	Pending guest requests
+________________________________________
+3.4 User Management Module
+FR-USR-01: Add/Deactivate staff users.
+FR-USR-02: Set role (Admin, Supervisor, HK Staff, Linen Staff, Maintenance).
+FR-USR-03: Arabic or English interface preference.
+FR-USR-04: Permission levels (e.g., staff cannot delete or modify stock).
+________________________________________
+3.5 Reporting Module
+System must provide:
+•	Daily Inventory Report
+•	Daily Linen Report (Received/Issued/Soiled/Laundry Return)
+•	Room Cleaning Time Report
+•	Guest Request Report
+•	Damage/Discard History
+•	Reorder List
+Reports exportable as PDF/Excel.
+________________________________________
+4. Non-Functional Requirements
+NFR-01: Usability
+•	Designed for layman-level staff with zero technical background.
+•	All staff interfaces must default to Arabic.
+•	Large buttons, minimal text, icon-based navigation.
+NFR-02: Performance
+•	Screens must load in under 2 seconds.
+•	PWA must work offline and sync when connection returns.
+NFR-03: Security
+•	Role-based access.
+•	Supervisor PIN required for overrides (e.g., negative stock).
+NFR-04: Reliability
+•	Data stored with timestamp, user ID, and audit trail.
+•	Fail-safe sync queue for offline operations.
+NFR-05: Compatibility
+•	Must run on all modern browsers (Chrome, Edge, Safari).
+•	Mobile PWA supports Android & iOS.
+NFR-06: Localization
+•	Full Arabic translation (RTL layout).
+•	Optional English mode for admin/supervisors.
+________________________________________
+5. System Architecture Requirements
+Backend
+•	Cloud database (Supabase or Firebase recommended)
+•	REST API or GraphQL layer
+•	Authentication + RBAC
+Web App
+•	React / Vue / Angular
+•	Dashboard, reports, admin management
+Mobile PWA
+•	Same front-end framework with service workers
+•	Offline-first capability
+________________________________________
+6. Acceptance Criteria
+The system will be accepted if:
+•	Staff can receive, issue, and check stock within 3 taps.
+•	Supervisor can assign and track rooms end-to-end.
+•	Linen cycle (clean → soiled → laundry → return → damaged/discard) is fully digital.
+•	All actions create timestamped logs.
+•	Arabic interface available for all staff operations.
+________________________________________
+7. Future Enhancements (Optional)
+•	Barcode/QR-based item identification
+•	WhatsApp integration for guest requests
+•	Geo-tagged staff activity
+•	Predictive stock forecasting
+________________________________________
+8. Approval
+This document will serve as the baseline for system development.
+Sign-off required from:
+•	Management
+•	Housekeeping Supervisor
+•	IT Vendor
+________________________________________
+If you want, I can now produce:
+✅ A PDF version of this SRS
+✅ A detailed UI wireframe document
+✅ A workflow diagram pack (BPMN)
+✅ A Feature Checklist for client signature
+Which one do you want next?
+

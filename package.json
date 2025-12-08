@@ -1,0 +1,29 @@
+{
+  "name": "fhk-housekeeping",
+  "version": "1.0.0",
+  "description": "Housekeeping, Inventory & Linen Management System",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "shared"
+  ],
+  "scripts": {
+    "dev:admin": "cd apps/admin-web && npm run dev",
+    "dev:staff": "cd apps/staff-pwa && npm run dev",
+    "build:admin": "cd apps/admin-web && npm run build",
+    "build:staff": "cd apps/staff-pwa && npm run build",
+    "build:all": "npm run build:admin && npm run build:staff",
+    "supabase:start": "cd supabase && supabase start",
+    "supabase:stop": "cd supabase && supabase stop",
+    "supabase:push": "cd supabase && supabase db push"
+  },
+  "keywords": [
+    "housekeeping",
+    "hotel",
+    "inventory",
+    "linen",
+    "management"
+  ],
+  "author": "FHK Solutions",
+  "license": "UNLICENSED"
+}
