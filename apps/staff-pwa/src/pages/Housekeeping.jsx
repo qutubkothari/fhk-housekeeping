@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabaseClient'
 import { Plus, Search, CheckCircle, Clock, AlertCircle, RefreshCw, Eye, User, Calendar, X, UserPlus, Edit2, Trash2 } from 'lucide-react'
 import Select from 'react-select'
 import { customSelectStyles } from '../utils/selectStyles'
+import { translations } from '../translations'
 
-export default function Housekeeping({ user }) {
+export default function Housekeeping({ user, lang = 'en' }) {
   const [tasks, setTasks] = useState([])
   const [rooms, setRooms] = useState([])
   const [staff, setStaff] = useState([])
@@ -23,6 +24,8 @@ export default function Housekeeping({ user }) {
     scheduled_date: new Date().toISOString().split('T')[0],
     notes: ''
   })
+  
+  const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
 
   useEffect(() => {
     if (user?.org_id) {
@@ -201,14 +204,14 @@ export default function Housekeeping({ user }) {
     <div className="space-y-6">
       {/* Header with Assign Button */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Housekeeping Tasks</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('housekeeping')} {t('tasks')}</h1>
         {(user.role === 'admin' || user.role === 'super_admin' || user.role === 'supervisor') && (
           <button
             onClick={() => setShowAssignModal(true)}
             className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
-            Assign New Task
+            {t('assignNewTask')}
           </button>
         )}
       </div>
@@ -216,10 +219,10 @@ export default function Housekeeping({ user }) {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Tasks', value: stats.total, color: 'from-blue-500 to-blue-600', icon: Calendar },
-          { label: 'Pending', value: stats.pending, color: 'from-yellow-500 to-yellow-600', icon: Clock },
-          { label: 'In Progress', value: stats.in_progress, color: 'from-purple-500 to-purple-600', icon: AlertCircle },
-          { label: 'Completed', value: stats.completed, color: 'from-green-500 to-green-600', icon: CheckCircle },
+          { label: t('totalTasks'), value: stats.total, color: 'from-blue-500 to-blue-600', icon: Calendar },
+          { label: t('pending'), value: stats.pending, color: 'from-yellow-500 to-yellow-600', icon: Clock },
+          { label: t('inProgress'), value: stats.in_progress, color: 'from-purple-500 to-purple-600', icon: AlertCircle },
+          { label: t('completed'), value: stats.completed, color: 'from-green-500 to-green-600', icon: CheckCircle },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
@@ -249,14 +252,14 @@ export default function Housekeeping({ user }) {
             />
           </div>
           <Select
-            value={{ value: filterStatus, label: filterStatus === 'all' ? 'All Status' : filterStatus.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
-            onChange={(option) => setFilterStatus(option?.value || 'all')}
+            value={{ value: filterStatus, label: filterStatus === 'all' ? t('allStatus') : filterStatus.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
+            onChange={(option) => setFilterStatus(option.value)}
             options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'pending', label: 'Pending' },
-              { value: 'in_progress', label: 'In Progress' },
-              { value: 'completed', label: 'Completed' },
-              { value: 'pending_inspection', label: 'Pending Inspection' }
+              { value: 'all', label: t('allStatus') },
+              { value: 'pending', label: t('pending') },
+              { value: 'in_progress', label: t('inProgress') },
+              { value: 'completed', label: t('completed') },
+              { value: 'pending_inspection', label: t('pendingInspection') }
             ]}
             styles={customSelectStyles}
             isSearchable
@@ -356,7 +359,7 @@ export default function Housekeeping({ user }) {
             <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 p-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <UserPlus className="w-6 h-6 text-white" />
-                <h2 className="text-xl font-bold text-white">{modalMode === 'edit' ? 'Edit Task' : 'Assign New Task'}</h2>
+                <h2 className="text-xl font-bold text-white">{modalMode === 'edit' ? t('editTask') : t('assignNewTask')}</h2>
               </div>
               <button
                 onClick={() => {
@@ -422,10 +425,10 @@ export default function Housekeeping({ user }) {
                     value={{ value: taskData.task_type, label: taskData.task_type.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
                     onChange={(option) => setTaskData({ ...taskData, task_type: option?.value || 'cleaning' })}
                     options={[
-                      { value: 'cleaning', label: 'Cleaning' },
-                      { value: 'deep_cleaning', label: 'Deep Cleaning' },
-                      { value: 'turndown', label: 'Turndown Service' },
-                      { value: 'inspection', label: 'Inspection' }
+                      { value: 'cleaning', label: t('cleaning') },
+                      { value: 'deep_cleaning', label: t('deepCleaning') },
+                      { value: 'turndown', label: t('turndownService') },
+                      { value: 'inspection', label: t('inspection') }
                     ]}
                     styles={customSelectStyles}
                     isSearchable
@@ -483,14 +486,14 @@ export default function Housekeeping({ user }) {
                   }}
                   className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   <UserPlus className="w-5 h-5" />
-                  {modalMode === 'edit' ? 'Update Task' : 'Assign Task'}
+                  {modalMode === 'edit' ? t('updateTask') : t('assignTask')}
                 </button>
               </div>
             </form>

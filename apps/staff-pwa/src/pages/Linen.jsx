@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Search, Shirt, Package, TrendingUp, TrendingDown, RefreshCw, Plus, X, ArrowRight, Recycle, Loader, CheckCircle, AlertTriangle, Clock } from 'lucide-react'
+import { Search, Shirt, Package, TrendingUp, TrendingDown, RefreshCw, Plus, X, ArrowRight, Recycle, Loader, CheckCircle, AlertTriangle, Clock, Edit2, Trash2 } from 'lucide-react'
 import Select from 'react-select'
+import { translations } from '../translations'
 
-export default function Linen({ user }) {
+export default function Linen({ user, lang = 'en' }) {
+  const t = (key) => translations[key]?.[lang] || key
+
   const [linens, setLinens] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -12,7 +15,9 @@ export default function Linen({ user }) {
   const [rooms, setRooms] = useState([])
   const [transactions, setTransactions] = useState([])
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showTransactionModal, setShowTransactionModal] = useState(false)
+  const [selectedLinen, setSelectedLinen] = useState(null)
   const [linenData, setLinenData] = useState({
     item_name_en: '',
     item_name_ar: '',
@@ -127,6 +132,87 @@ export default function Linen({ user }) {
     } catch (error) {
       console.error('Error adding linen:', error)
       alert('Failed to add linen: ' + error.message)
+    }
+  }
+
+  const handleEdit = (item) => {
+    setSelectedLinen(item)
+    setLinenData({
+      item_name_en: item.item_name_en,
+      item_name_ar: item.item_name_ar,
+      linen_type: item.linen_type,
+      size: item.size,
+      clean_stock: item.clean_stock,
+      soiled_stock: item.soiled_stock,
+      in_laundry: item.in_laundry,
+      total_stock: item.total_stock,
+      par_level: item.par_level,
+      notes: item.notes || ''
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateLinen = async (e) => {
+    e.preventDefault()
+    
+    try {
+      const total = parseInt(linenData.clean_stock) + parseInt(linenData.soiled_stock) + parseInt(linenData.in_laundry)
+      
+      const { error } = await supabase
+        .from('linen_items')
+        .update({
+          item_name_en: linenData.item_name_en,
+          item_name_ar: linenData.item_name_ar,
+          linen_type: linenData.linen_type,
+          size: linenData.size,
+          clean_stock: parseInt(linenData.clean_stock),
+          soiled_stock: parseInt(linenData.soiled_stock),
+          in_laundry: parseInt(linenData.in_laundry),
+          total_stock: total,
+          par_level: parseInt(linenData.par_level) || 0,
+          notes: linenData.notes
+        })
+        .eq('id', selectedLinen.id)
+
+      if (error) throw error
+
+      setShowEditModal(false)
+      setSelectedLinen(null)
+      setLinenData({
+        item_name_en: '',
+        item_name_ar: '',
+        linen_type: 'bedding',
+        size: 'standard',
+        clean_stock: 0,
+        soiled_stock: 0,
+        in_laundry: 0,
+        total_stock: 0,
+        par_level: 0,
+        notes: ''
+      })
+      loadData()
+      alert('Linen item updated successfully')
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Failed to update linen item')
+    }
+  }
+
+  const handleDelete = async (item) => {
+    if (!confirm(`Delete ${item.item_name_en}? This action cannot be undone.`)) return
+
+    try {
+      const { error} = await supabase
+        .from('linen_items')
+        .delete()
+        .eq('id', item.id)
+
+      if (error) throw error
+      loadData()
+      alert('Linen item deleted successfully')
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Failed to delete linen item')
     }
   }
 
@@ -324,10 +410,10 @@ export default function Linen({ user }) {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Clean Items', value: stats.clean, color: 'from-green-500 to-green-600', icon: Shirt },
-          { label: 'Soiled Items', value: stats.soiled, color: 'from-yellow-500 to-yellow-600', icon: TrendingDown },
-          { label: 'In Laundry', value: stats.in_laundry, color: 'from-blue-500 to-blue-600', icon: RefreshCw },
-          { label: 'Total Types', value: stats.total_items, color: 'from-purple-500 to-purple-600', icon: Package },
+          { label: t('cleanItems'), value: stats.clean, color: 'from-green-500 to-green-600', icon: Shirt },
+          { label: t('soiledItems'), value: stats.soiled, color: 'from-yellow-500 to-yellow-600', icon: TrendingDown },
+          { label: t('inLaundry'), value: stats.in_laundry, color: 'from-blue-500 to-blue-600', icon: RefreshCw },
+          { label: t('totalTypes'), value: stats.total_items, color: 'from-purple-500 to-purple-600', icon: Package },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
@@ -380,6 +466,22 @@ export default function Linen({ user }) {
                   <p className="text-sm text-gray-500">{item.linen_type} • {item.size}</p>
                   <p className="text-sm text-gray-500">Total: {item.total_stock || 0}</p>
                 </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(item)}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Edit"
+                >
+                  <Edit2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(item)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
               </div>
             </div>
 
@@ -684,6 +786,170 @@ export default function Linen({ user }) {
                 >
                   <Plus className="w-5 h-5" />
                   Add Linen Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 p-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Edit2 className="w-6 h-6 text-white" />
+                <h2 className="text-xl font-bold text-white">Edit Linen Item</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setSelectedLinen(null)
+                }}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateLinen} className="p-6 space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-blue-800 text-sm">Update linen item details</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Item Name (English) *</label>
+                  <input
+                    type="text"
+                    value={linenData.item_name_en}
+                    onChange={(e) => setLinenData({ ...linenData, item_name_en: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Item Name (Arabic)</label>
+                  <input
+                    type="text"
+                    value={linenData.item_name_ar}
+                    onChange={(e) => setLinenData({ ...linenData, item_name_ar: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Linen Type *</label>
+                  <select
+                    value={linenData.linen_type}
+                    onChange={(e) => setLinenData({ ...linenData, linen_type: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="bedding">Bedding</option>
+                    <option value="towels">Towels</option>
+                    <option value="bathrobes">Bathrobes</option>
+                    <option value="tablecloths">Tablecloths</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Size *</label>
+                  <select
+                    value={linenData.size}
+                    onChange={(e) => setLinenData({ ...linenData, size: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="small">Small</option>
+                    <option value="standard">Standard</option>
+                    <option value="large">Large</option>
+                    <option value="king">King</option>
+                    <option value="queen">Queen</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Clean Stock *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={linenData.clean_stock}
+                    onChange={(e) => setLinenData({ ...linenData, clean_stock: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Soiled Stock</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={linenData.soiled_stock}
+                    onChange={(e) => setLinenData({ ...linenData, soiled_stock: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">In Laundry</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={linenData.in_laundry}
+                    onChange={(e) => setLinenData({ ...linenData, in_laundry: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Par Level *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={linenData.par_level}
+                    onChange={(e) => setLinenData({ ...linenData, par_level: e.target.value })}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
+                <textarea
+                  value={linenData.notes}
+                  onChange={(e) => setLinenData({ ...linenData, notes: e.target.value })}
+                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows="3"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setSelectedLinen(null)
+                  }}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <Edit2 className="w-5 h-5" />
+                  Update Linen Item
                 </button>
               </div>
             </form>

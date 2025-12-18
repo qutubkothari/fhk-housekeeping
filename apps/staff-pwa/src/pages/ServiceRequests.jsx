@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabaseClient'
 import { Plus, Search, RefreshCw, Eye, AlertTriangle, CheckCircle, Clock, Wrench, X, Edit2, Trash2 } from 'lucide-react'
 import Select from 'react-select'
 import { customSelectStyles } from '../utils/selectStyles'
+import { translations } from '../translations'
 
-export default function ServiceRequests({ user }) {
+export default function ServiceRequests({ user, lang = 'en' }) {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -22,9 +23,12 @@ export default function ServiceRequests({ user }) {
     description: '',
     request_type: 'maintenance',
     category: 'general',
+    issues_reported: [],
     priority: 'normal',
     assigned_to: ''
   })
+  
+  const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
 
   useEffect(() => {
     console.log('🟠 ServiceRequests v2.0 - WITH CREATE REQUEST BUTTON')
@@ -100,6 +104,7 @@ export default function ServiceRequests({ user }) {
       description: request.description,
       request_type: request.request_type,
       category: request.category || 'general',
+      issues_reported: Array.isArray(request.issues_reported) ? request.issues_reported : [],
       priority: request.priority,
       assigned_to: request.assigned_to || ''
     })
@@ -128,18 +133,27 @@ export default function ServiceRequests({ user }) {
     e.preventDefault()
     
     try {
-      const { error } = await supabase
+      const updatePayload = {
+        room_id: requestData.room_id,
+        title: requestData.title,
+        description: requestData.description,
+        request_type: requestData.request_type,
+        category: requestData.category,
+        issues_reported: requestData.issues_reported?.length ? requestData.issues_reported : null,
+        priority: requestData.priority,
+        assigned_to: requestData.assigned_to || null
+      }
+
+      let { error } = await supabase
         .from('service_requests')
-        .update({
-          room_id: requestData.room_id,
-          title: requestData.title,
-          description: requestData.description,
-          request_type: requestData.request_type,
-          category: requestData.category,
-          priority: requestData.priority,
-          assigned_to: requestData.assigned_to || null
-        })
+        .update(updatePayload)
         .eq('id', selectedRequest.id)
+
+      // Backward compatibility if DB column not added yet
+      if (error && (error.code === '42703' || String(error.message || '').toLowerCase().includes('issues_reported'))) {
+        const { issues_reported, ...fallbackPayload } = updatePayload
+        ;({ error } = await supabase.from('service_requests').update(fallbackPayload).eq('id', selectedRequest.id))
+      }
 
       if (error) throw error
       
@@ -153,6 +167,7 @@ export default function ServiceRequests({ user }) {
         description: '',
         request_type: 'maintenance',
         category: 'general',
+        issues_reported: [],
         priority: 'normal',
         assigned_to: ''
       })
@@ -167,20 +182,29 @@ export default function ServiceRequests({ user }) {
     e.preventDefault()
     
     try {
-      const { error } = await supabase
+      const insertPayload = {
+        org_id: user.org_id,
+        room_id: requestData.room_id,
+        title: requestData.title,
+        description: requestData.description,
+        request_type: requestData.request_type,
+        category: requestData.category,
+        issues_reported: requestData.issues_reported?.length ? requestData.issues_reported : null,
+        priority: requestData.priority,
+        status: 'open',
+        assigned_to: requestData.assigned_to || null,
+        reported_by: user.id
+      }
+
+      let { error } = await supabase
         .from('service_requests')
-        .insert([{
-          org_id: user.org_id,
-          room_id: requestData.room_id,
-          title: requestData.title,
-          description: requestData.description,
-          request_type: requestData.request_type,
-          category: requestData.category,
-          priority: requestData.priority,
-          status: 'open',
-          assigned_to: requestData.assigned_to || null,
-          reported_by: user.id
-        }])
+        .insert([insertPayload])
+
+      // Backward compatibility if DB column not added yet
+      if (error && (error.code === '42703' || String(error.message || '').toLowerCase().includes('issues_reported'))) {
+        const { issues_reported, ...fallbackPayload } = insertPayload
+        ;({ error } = await supabase.from('service_requests').insert([fallbackPayload]))
+      }
 
       if (error) throw error
 
@@ -190,6 +214,7 @@ export default function ServiceRequests({ user }) {
         description: '',
         request_type: 'maintenance',
         category: 'general',
+        issues_reported: [],
         priority: 'normal',
         assigned_to: ''
       })
@@ -491,6 +516,7 @@ export default function ServiceRequests({ user }) {
                     onChange={(option) => setRequestData({ ...requestData, category: option?.value || 'general' })}
                     options={[
                       { value: 'general', label: 'General' },
+                      { value: 'turn_down', label: 'Turn Down Service' },
                       { value: 'plumbing', label: 'Plumbing' },
                       { value: 'electrical', label: 'Electrical' },
                       { value: 'hvac', label: 'HVAC/AC' },
@@ -505,6 +531,30 @@ export default function ServiceRequests({ user }) {
                     isSearchable
                     required
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Issues (Multiple)</label>
+                  <Select
+                    isMulti
+                    value={(requestData.issues_reported || []).map((v) => ({ value: v, label: v.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }))}
+                    onChange={(options) => setRequestData({ ...requestData, issues_reported: (options || []).map((o) => o.value) })}
+                    options={[
+                      { value: 'ac_issue', label: 'AC Issue' },
+                      { value: 'plumbing_issue', label: 'Plumbing Issue' },
+                      { value: 'electrical_issue', label: 'Electrical Issue' },
+                      { value: 'furniture_damage', label: 'Furniture Damage' },
+                      { value: 'appliance_issue', label: 'Appliance Issue' },
+                      { value: 'safety_issue', label: 'Safety Issue' },
+                      { value: 'cleaning_issue', label: 'Cleaning Issue' },
+                      { value: 'amenity_request', label: 'Amenity Request' },
+                      { value: 'other', label: 'Other' }
+                    ]}
+                    placeholder="Select one or more issues..."
+                    styles={customSelectStyles}
+                    isSearchable
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Use this for maintenance/breakdown cases when multiple issues exist in the same room.</p>
                 </div>
               </div>
 

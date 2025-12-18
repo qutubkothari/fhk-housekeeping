@@ -129,5 +129,255 @@ export const translations = {
   signOut: { en: 'Sign Out', ar: 'تسجيل الخروج' },
   systemName: { en: 'FHK Housekeeping Management System', ar: 'نظام إدارة التدبير المنزلي FHK' },
   allRightsReserved: { en: '© 2025 All Rights Reserved', ar: '© 2025 جميع الحقوق محفوظة' },
+  
+  // Rooms Page
+  rooms: { en: 'Rooms', ar: 'الغرف' },
+  addRoom: { en: 'Add Room', ar: 'إضافة غرفة' },
+  editRoom: { en: 'Edit Room', ar: 'تعديل الغرفة' },
+  allFloors: { en: 'All Floors', ar: 'جميع الطوابق' },
+  allTypes: { en: 'All Types', ar: 'جميع الأنواع' },
+  allStatus: { en: 'All Status', ar: 'جميع الحالات' },
+  searchRooms: { en: 'Search rooms...', ar: 'بحث عن غرف...' },
+  refresh: { en: 'Refresh', ar: 'تحديث' },
+  standard: { en: 'Standard', ar: 'قياسية' },
+  deluxe: { en: 'Deluxe', ar: 'فاخرة' },
+  suite: { en: 'Suite', ar: 'جناح' },
+  executive: { en: 'Executive', ar: 'تنفيذية' },
+  vacant: { en: 'Vacant', ar: 'شاغرة' },
+  occupied: { en: 'Occupied', ar: 'مشغولة' },
+  cleaning: { en: 'Cleaning', ar: 'قيد التنظيف' },
+  out_of_order: { en: 'Out of Order', ar: 'خارج الخدمة' },
+  items: { en: 'Items', ar: 'العناصر' },
+  assignStock: { en: 'Assign Stock', ar: 'تعيين المخزون' },
+  transactions: { en: 'Transactions', ar: 'المعاملات' },
+  history: { en: 'History', ar: 'السجل' },
+  overview: { en: 'Overview', ar: 'نظرة عامة' },
+  performance: { en: 'Performance', ar: 'الأداء' },
+  // Room details
+  type: { en: 'Type', ar: 'النوع' },
+  occupancy: { en: 'Occupancy', ar: 'الإشغال' },
+  bed: { en: 'Bed', ar: 'السرير' },
+  floor: { en: 'Floor', ar: 'طابق' },
+  view: { en: 'View', ar: 'عرض' },
+  edit: { en: 'Edit', ar: 'تعديل' },
+  room: { en: 'Room', ar: 'غرفة' },
+  actions: { en: 'Actions', ar: 'الإجراءات' },
+  bedType: { en: 'Bed Type', ar: 'نوع السرير' },
+  
+  // Bed types
+  single: { en: 'Single', ar: 'سرير مفرد' },
+  double: { en: 'Double', ar: 'سرير مزدوج' },
+  twin: { en: 'Twin', ar: 'سريرين' },
+  queen: { en: 'Queen', ar: 'كوين' },
+  king: { en: 'King', ar: 'كينغ' },
+  
+  // Staff page
+  totalStaff: { en: 'Total Staff', ar: 'إجمالي الموظفين' },
+  active: { en: 'Active', ar: 'نشط' },
+  staffMembers: { en: 'Staff Members', ar: 'أعضاء الطاقم' },
+  supervisors: { en: 'Supervisors', ar: 'المشرفون' },
+  addStaff: { en: 'Add Staff', ar: 'إضافة موظف' },
+  allRoles: { en: 'All Roles', ar: 'جميع الأدوار' },
+  name: { en: 'Name', ar: 'الاسم' },
+  email: { en: 'Email', ar: 'البريد الإلكتروني' },
+  phone: { en: 'Phone', ar: 'الهاتف' },
+  role: { en: 'Role', ar: 'الدور' },
+  
+  // Roles
+  admin: { en: 'Admin', ar: 'مدير' },
+  staff: { en: 'Staff', ar: 'موظف' },
+  supervisor: { en: 'Supervisor', ar: 'مشرف' },
+  maintenance: { en: 'Maintenance', ar: 'صيانة' },
+  housekeeping: { en: 'Housekeeping', ar: 'التدبير المنزلي' },
+  
+  // Common buttons/labels
+  search: { en: 'Search', ar: 'بحث' },
+  save: { en: 'Save', ar: 'حفظ' },
+  cancel: { en: 'Cancel', ar: 'إلغاء' },
+  delete: { en: 'Delete', ar: 'حذف' },
+  close: { en: 'Close', ar: 'إغلاق' },
+  
+  // Linen page
+  cleanItems: { en: 'Clean Items', ar: 'العناصر النظيفة' },
+  soiledItems: { en: 'Soiled Items', ar: 'العناصر المتسخة' },
+  inLaundry: { en: 'In Laundry', ar: 'في المغسلة' },
+  totalTypes: { en: 'Total Types', ar: 'إجمالي الأنواع' },
+  
+  // Housekeeping page
+  totalTasks: { en: 'Total Tasks', ar: 'إجمالي المهام' },
+  pending: { en: 'Pending', ar: 'قيد الانتظار' },
+  inProgress: { en: 'In Progress', ar: 'قيد التنفيذ' },
+  completed: { en: 'Completed', ar: 'مكتمل' },
+  pendingInspection: { en: 'Pending Inspection', ar: 'في انتظار التفتيش' },
+  allTasks: { en: 'All Tasks', ar: 'جميع المهام' },
+  
+  // Reports page  
+  total: { en: 'Total', ar: 'الإجمالي' },
+  last7Days: { en: 'Last 7 Days', ar: 'آخر 7 أيام' },
+  last30Days: { en: 'Last 30 Days', ar: 'آخر 30 يوم' },
+  last90Days: { en: 'Last 90 Days', ar: 'آخر 90 يوم' },
+  allTime: { en: 'All Time', ar: 'كل الوقت' },
+  
+  // Service Requests  
+  resolved: { en: 'Resolved', ar: 'محلول' },
+  inProgress: { en: 'In Progress', ar: 'قيد التنفيذ' },
+  totalRequests: { en: 'Total Requests', ar: 'إجمالي الطلبات' },
+  createRequest: { en: 'Create Request', ar: 'إنشاء طلب' },
+  allPriority: { en: 'All Priority', ar: 'جميع الأولويات' },
+  
+  // Staff Assignments
+  totalAssignments: { en: 'Total Assignments', ar: 'إجمالي المهام' },
+  allStaffMembers: { en: 'All Staff Members', ar: 'جميع الموظفين' },
+  filterByStaff: { en: 'Filter by Staff', ar: 'تصفية حسب الموظف' },
+  filterByDate: { en: 'Filter by Date', ar: 'تصفية حسب التاريخ' },
+  
+  // Dashboard
+  welcomeBack: { en: 'Welcome Back', ar: 'مرحبا بعودتك' },
+  happeningToday: { en: 'Here\'s what\'s happening today', ar: 'إليك ما يحدث اليوم' },
+  totalRooms: { en: 'Total Rooms', ar: 'إجمالي الغرف' },
+  tasksToday: { en: 'Tasks Today', ar: 'مهام اليوم' },
+  serviceRequests: { en: 'Service Requests', ar: 'طلبات الخدمة' },
+  lowStockItems: { en: 'Low Stock Items', ar: 'عناصر منخفضة المخزون' },
+  roomStatusOverview: { en: 'Room Status Overview', ar: 'نظرة عامة على حالة الغرف' },
+  urgent: { en: 'Urgent', ar: 'عاجل' },
+  inventoryAlert: { en: 'Inventory Alert', ar: 'تنبيه المخزون' },
+  
+  // Issue Categories
+  acIssues: { en: 'AC Issues', ar: 'مشاكل التكييف' },
+  bedIssues: { en: 'Bed Issues', ar: 'مشاكل السرير' },
+  bathroomIssues: { en: 'Bathroom Issues', ar: 'مشاكل الحمام' },
+  furnitureIssues: { en: 'Furniture Issues', ar: 'مشاكل الأثاث' },
+  electricalIssues: { en: 'Electrical Issues', ar: 'مشاكل كهربائية' },
+  cleanlinessIssues: { en: 'Cleanliness Issues', ar: 'مشاكل النظافة' },
+  other: { en: 'Other', ar: 'أخرى' },
+  
+  // AC Issues
+  notCooling: { en: 'Not cooling', ar: 'لا يبرد' },
+  notHeating: { en: 'Not heating', ar: 'لا يسخن' },
+  makingNoise: { en: 'Making noise', ar: 'يصدر ضوضاء' },
+  remoteNotWorking: { en: 'Remote not working', ar: 'الريموت لا يعمل' },
+  leakingWater: { en: 'Leaking water', ar: 'تسرب ماء' },
+  
+  // Bed Issues
+  sheetsDirty: { en: 'Sheets dirty', ar: 'ملاءات متسخة' },
+  mattressStained: { en: 'Mattress stained', ar: 'مرتبة ملطخة' },
+  pillowsMissing: { en: 'Pillows missing', ar: 'وسائد مفقودة' },
+  bedFrameBroken: { en: 'Bed frame broken', ar: 'إطار السرير مكسور' },
+  beddingTorn: { en: 'Bedding torn', ar: 'فراش ممزق' },
+  
+  // Bathroom Issues
+  toiletNotFlushing: { en: 'Toilet not flushing', ar: 'المرحاض لا يشطف' },
+  sinkClogged: { en: 'Sink clogged', ar: 'حوض مسدود' },
+  showerNotWorking: { en: 'Shower not working', ar: 'الدش لا يعمل' },
+  noHotWater: { en: 'No hot water', ar: 'لا ماء ساخن' },
+  tilesBroken: { en: 'Tiles broken', ar: 'بلاط مكسور' },
+  toiletSeatBroken: { en: 'Toilet seat broken', ar: 'مقعد المرحاض مكسور' },
+  
+  // Furniture Issues
+  chairBroken: { en: 'Chair broken', ar: 'كرسي مكسور' },
+  tableDamaged: { en: 'Table damaged', ar: 'طاولة تالفة' },
+  wardrobeDoorBroken: { en: 'Wardrobe door broken', ar: 'باب الخزانة مكسور' },
+  drawerStuck: { en: 'Drawer stuck', ar: 'درج عالق' },
+  mirrorCracked: { en: 'Mirror cracked', ar: 'مرآة مكسورة' },
+  
+  // Electrical Issues
+  lightsNotWorking: { en: 'Lights not working', ar: 'الأضواء لا تعمل' },
+  tvNotWorking: { en: 'TV not working', ar: 'التلفاز لا يعمل' },
+  powerOutletBroken: { en: 'Power outlet broken', ar: 'مقبس كهرباء معطل' },
+  switchBroken: { en: 'Switch broken', ar: 'مفتاح معطل' },
+  
+  // Cleanliness Issues
+  carpetStained: { en: 'Carpet stained', ar: 'سجاد ملطخ' },
+  wallsDirty: { en: 'Walls dirty', ar: 'جدران متسخة' },
+  windowsDirty: { en: 'Windows dirty', ar: 'نوافذ متسخة' },
+  floorNeedsDeepClean: { en: 'Floor needs deep clean', ar: 'الأرضية تحتاج تنظيف عميق' },
+  
+  // Other Issues
+  itemsMissing: { en: 'Items missing', ar: 'عناصر مفقودة' },
+  odorProblem: { en: 'Odor problem', ar: 'مشكلة رائحة' },
+  pestProblem: { en: 'Pest problem', ar: 'مشكلة حشرات' },
+  generalMaintenanceNeeded: { en: 'General maintenance needed', ar: 'صيانة عامة مطلوبة' },
+  
+  // Modal labels
+  selectedIssues: { en: 'Selected Issues', ar: 'المشاكل المحددة' },
+  saveIssues: { en: 'Save Issues', ar: 'حفظ المشاكل' },
+  reportIssues: { en: 'Report Issues', ar: 'الإبلاغ عن مشاكل' },
+  selectAllIssuesInRoom: { en: 'Select all issues found in the room', ar: 'حدد جميع المشاكل الموجودة في الغرفة' },
+  
+  // Activities
+  activities: { en: 'Activities', ar: 'الأنشطة' },
+  activityMaster: { en: 'Activity Master', ar: 'قائمة الأنشطة الرئيسية' },
+  activityName: { en: 'Activity Name', ar: 'اسم النشاط' },
+  activityCode: { en: 'Code', ar: 'الرمز' },
+  estimatedTime: { en: 'Est. Time', ar: 'الوقت المقدر' },
+  minutes: { en: 'minutes', ar: 'دقائق' },
+  mandatory: { en: 'Mandatory', ar: 'إلزامي' },
+  optional: { en: 'Optional', ar: 'اختياري' },
+  sequenceOrder: { en: 'Sequence', ar: 'الترتيب' },
+  addActivity: { en: 'Add Activity', ar: 'إضافة نشاط' },
+  editActivity: { en: 'Edit Activity', ar: 'تعديل النشاط' },
+  deleteActivity: { en: 'Delete Activity', ar: 'حذف النشاط' },
+  
+  // Bulk Assignment
+  bulkAssignment: { en: 'Bulk Assignment', ar: 'التعيين الجماعي' },
+  assignRooms: { en: 'Assign Rooms', ar: 'تعيين الغرف' },
+  selectRooms: { en: 'Select Rooms', ar: 'اختر الغرف' },
+  selectActivities: { en: 'Select Activities', ar: 'اختر الأنشطة' },
+  selectStaff: { en: 'Select Staff', ar: 'اختر الموظفين' },
+  assignmentType: { en: 'Assignment Type', ar: 'نوع التعيين' },
+  beforeArrival: { en: 'Before Arrival', ar: 'قبل الوصول' },
+  occupied: { en: 'Occupied Clean', ar: 'تنظيف مشغولة' },
+  preventiveMaintenance: { en: 'Preventive Maintenance', ar: 'صيانة وقائية' },
+  turnDown: { en: 'Turn Down Service', ar: 'خدمة تجهيز المساء' },
+  selectShift: { en: 'Select Shift', ar: 'اختر الوردية' },
+  targetTime: { en: 'Target Time', ar: 'الوقت المستهدف' },
+  assignToStaff: { en: 'Assign to Staff', ar: 'تعيين للموظف' },
+  roomsSelected: { en: 'rooms selected', ar: 'غرف محددة' },
+  activitiesSelected: { en: 'activities selected', ar: 'أنشطة محددة' },
+  createAssignments: { en: 'Create Assignments', ar: 'إنشاء التعيينات' },
+  assignmentCreated: { en: 'Assignments created successfully', ar: 'تم إنشاء التعيينات بنجاح' },
+  
+  // Activity-based Tasks
+  myActivities: { en: 'My Activities', ar: 'أنشطتي' },
+  roomActivities: { en: 'Room Activities', ar: 'أنشطة الغرفة' },
+  activityDetails: { en: 'Activity Details', ar: 'تفاصيل النشاط' },
+  startActivity: { en: 'Start Activity', ar: 'بدء النشاط' },
+  completeActivity: { en: 'Complete Activity', ar: 'إنهاء النشاط' },
+  skipActivity: { en: 'Skip Activity', ar: 'تخطي النشاط' },
+  completionPercentage: { en: 'Completion', ar: 'نسبة الإنجاز' },
+  timeTaken: { en: 'Time Taken', ar: 'الوقت المستغرق' },
+  activityCompleted: { en: 'Activity completed', ar: 'تم إكمال النشاط' },
+  activityStarted: { en: 'Activity started', ar: 'بدأ النشاط' },
+  allActivitiesCompleted: { en: 'All activities completed!', ar: 'تم إكمال جميع الأنشطة!' },
+  activitiesRemaining: { en: 'activities remaining', ar: 'أنشطة متبقية' },
+  
+  // Locations & Shifts
+  locations: { en: 'Locations', ar: 'المواقع' },
+  locationMaster: { en: 'Location Master', ar: 'قائمة المواقع الرئيسية' },
+  locationName: { en: 'Location Name', ar: 'اسم الموقع' },
+  locationCode: { en: 'Code', ar: 'الرمز' },
+  locationType: { en: 'Type', ar: 'النوع' },
+  parentLocation: { en: 'Parent Location', ar: 'الموقع الأعلى' },
+  addLocation: { en: 'Add Location', ar: 'إضافة موقع' },
+  editLocation: { en: 'Edit Location', ar: 'تعديل الموقع' },
+  shifts: { en: 'Shifts', ar: 'الورديات' },
+  shiftMaster: { en: 'Shift Master', ar: 'قائمة الورديات الرئيسية' },
+  shiftName: { en: 'Shift Name', ar: 'اسم الوردية' },
+  shiftCode: { en: 'Code', ar: 'الرمز' },
+  startTime: { en: 'Start Time', ar: 'وقت البدء' },
+  endTime: { en: 'End Time', ar: 'وقت الانتهاء' },
+  addShift: { en: 'Add Shift', ar: 'إضافة وردية' },
+  editShift: { en: 'Edit Shift', ar: 'تعديل الوردية' },
+  
+  // Additional common terms
+  assigned: { en: 'assigned', ar: 'معينة' },
+  next: { en: 'Next', ar: 'التالي' },
+  review: { en: 'Review', ar: 'مراجعة' },
+  totalAssignments: { en: 'Total Assignments', ar: 'إجمالي التعيينات' },
+  selectAll: { en: 'Select All', ar: 'تحديد الكل' },
+  selectedActivities: { en: 'Selected Activities', ar: 'الأنشطة المحددة' },
+  selectedRooms: { en: 'Selected Rooms', ar: 'الغرف المحددة' },
+  active: { en: 'Active', ar: 'نشط' },
+  inactive: { en: 'Inactive', ar: 'غير نشط' },
+  noData: { en: 'No data available', ar: 'لا توجد بيانات' },
 }
-

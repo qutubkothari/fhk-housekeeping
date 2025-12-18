@@ -3,8 +3,11 @@ import { supabase } from '../lib/supabaseClient'
 import { Plus, Search, Edit2, Trash2, Eye, Grid, List, RefreshCw, BedDouble, DoorOpen } from 'lucide-react'
 import Select from 'react-select'
 import { customSelectStyles } from '../utils/selectStyles'
+import { translations } from '../translations'
 
-export default function Rooms({ user }) {
+export default function Rooms({ user, lang = 'en' }) {
+  const t = (key) => translations[key]?.[lang] || key
+
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -16,6 +19,7 @@ export default function Rooms({ user }) {
   const [showModal, setShowModal] = useState(false)
   const [modalMode, setModalMode] = useState('add')
   const [selectedRoom, setSelectedRoom] = useState(null)
+  const [creatingTurnDown, setCreatingTurnDown] = useState(false)
   const [formData, setFormData] = useState({
     room_number: '',
     floor: '',
@@ -48,12 +52,39 @@ export default function Rooms({ user }) {
 
       const { data, error } = await supabase
         .from('rooms')
-        .select('*')
+        .select(`
+          *,
+          room_assignments(id, status, completion_percentage, created_at, assignment_date)
+        `)
         .eq('org_id', user.org_id)
         .order('room_number', { ascending: true })
 
       if (error) throw error
-      setRooms(data || [])
+      
+      const pickLatestAssignment = (assignments = []) => {
+        const nonCancelled = assignments.filter(a => a && a.status !== 'cancelled')
+        nonCancelled.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        return nonCancelled[0] || null
+      }
+
+      // Use latest room assignment for completion + gating
+      const roomsWithCompletion = (data || []).map(room => {
+        const latestAssignment = pickLatestAssignment(room.room_assignments || [])
+        const completionPercentage = latestAssignment?.completion_percentage ?? 0
+        const assignmentStatus = latestAssignment?.status ?? null
+        const hasAssignment = Boolean(latestAssignment)
+
+        return {
+          ...room,
+          completion_percentage: completionPercentage,
+          latest_assignment_status: assignmentStatus,
+          latest_assignment_id: latestAssignment?.id || null,
+          has_housekeeping_assignment: hasAssignment,
+          rfo_eligible: !hasAssignment || assignmentStatus === 'completed',
+        }
+      })
+      
+      setRooms(roomsWithCompletion)
     } catch (error) {
       console.error('Error fetching rooms:', error)
     } finally {
@@ -137,6 +168,18 @@ export default function Rooms({ user }) {
         return
       }
 
+      // RFO rule: status can be set to 'vacant' only after all assigned activities are completed
+      // We treat 'vacant' as Ready for Occupation (RFO).
+      if (modalMode === 'edit' && formData.status === 'vacant') {
+        const hasAssignment = Boolean(selectedRoom?.has_housekeeping_assignment)
+        const isEligible = Boolean(selectedRoom?.rfo_eligible)
+
+        if (hasAssignment && !isEligible) {
+          alert('Cannot mark room as Ready for Occupation (Vacant) until all assigned housekeeping activities are completed.')
+          return
+        }
+      }
+
       if (modalMode === 'add') {
         const { error } = await supabase
           .from('rooms')
@@ -162,6 +205,44 @@ export default function Rooms({ user }) {
     } catch (error) {
       console.error('Error saving room:', error)
       alert(`Failed to save room: ${error.message || 'Unknown error'}`)
+    }
+  }
+
+  const handleTurnDownRequest = async () => {
+    if (!selectedRoom?.id) return
+    if (selectedRoom?.occupancy_status !== 'occupied') {
+      alert('Turn Down Request is only available for occupied rooms.')
+      return
+    }
+
+    const ok = confirm(`Create a Turn Down Service request for Room ${selectedRoom.room_number}?`)
+    if (!ok) return
+
+    try {
+      setCreatingTurnDown(true)
+
+      const payload = {
+        org_id: user.org_id,
+        room_id: selectedRoom.id,
+        title: `Turn Down Service - Room ${selectedRoom.room_number}`,
+        description: 'Guest requested Turn Down Service.',
+        request_type: 'housekeeping',
+        category: 'turn_down',
+        priority: 'normal',
+        status: 'open',
+        assigned_to: null,
+        reported_by: user.id
+      }
+
+      const { error } = await supabase.from('service_requests').insert([payload])
+      if (error) throw error
+
+      alert('Turn Down request created successfully')
+    } catch (error) {
+      console.error('Error creating Turn Down request:', error)
+      alert('Failed to create Turn Down request: ' + (error?.message || 'Unknown error'))
+    } finally {
+      setCreatingTurnDown(false)
     }
   }
 
@@ -216,10 +297,10 @@ export default function Rooms({ user }) {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Vacant', value: statusCounts.vacant, color: 'from-green-500 to-green-600', icon: DoorOpen },
-          { label: 'Occupied', value: statusCounts.occupied, color: 'from-blue-500 to-blue-600', icon: BedDouble },
-          { label: 'Cleaning', value: statusCounts.cleaning, color: 'from-yellow-500 to-yellow-600', icon: DoorOpen },
-          { label: 'Maintenance', value: statusCounts.maintenance, color: 'from-orange-500 to-orange-600', icon: BedDouble },
+          { label: t('vacant'), value: statusCounts.vacant, color: 'from-green-500 to-green-600', icon: DoorOpen },
+          { label: t('occupied'), value: statusCounts.occupied, color: 'from-blue-500 to-blue-600', icon: BedDouble },
+          { label: t('cleaning'), value: statusCounts.cleaning, color: 'from-yellow-500 to-yellow-600', icon: DoorOpen },
+          { label: t('maintenance'), value: statusCounts.maintenance, color: 'from-orange-500 to-orange-600', icon: BedDouble },
         ].map((stat, index) => (
           <div key={index} className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-transparent hover:shadow-xl transition-all">
             <div className="flex items-center justify-between">
@@ -321,7 +402,7 @@ export default function Rooms({ user }) {
               className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-xl"
             >
               <Plus className="w-5 h-5" />
-              Add Room
+              {t("addRoom")}
             </button>
           </div>
         </div>
@@ -337,26 +418,57 @@ export default function Rooms({ user }) {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900">{room.room_number}</h3>
-                    <p className="text-sm text-gray-500">Floor {room.floor}</p>
+                    <p className="text-sm text-gray-500">{t("floor")} {room.floor}</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadgeColor(room.status)}`}>
-                    {room.status.replace('_', ' ')}
+                    {t(room.status)}
                   </span>
                 </div>
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Type:</span>
-                    <span className="font-semibold text-gray-900 capitalize">{room.room_type}</span>
+                    <span className="text-gray-600">{t("type")}:</span>
+                    <span className="font-semibold text-gray-900 capitalize">{t(room.room_type)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Occupancy:</span>
-                    <span className="font-semibold text-gray-900 capitalize">{room.occupancy_status}</span>
+                    <span className="text-gray-600">{t("occupancy")}:</span>
+                    <span className="font-semibold text-gray-900 capitalize">{t(room.occupancy_status)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Bed:</span>
-                    <span className="font-semibold text-gray-900 capitalize">{room.bed_type}</span>
+                    <span className="text-gray-600">{t("bed")}:</span>
+                    <span className="font-semibold text-gray-900 capitalize">{t(room.bed_type || "single")}</span>
                   </div>
+                  
+                  {/* Completion Progress Bar (show only when there is an assignment; includes 0%) */}
+                  {room.has_housekeeping_assignment && room.completion_percentage !== undefined && (
+                    <div className="pt-2">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs text-gray-600">Completion:</span>
+                        <span className={`text-xs font-bold ${
+                          room.completion_percentage === 100 ? 'text-green-600' :
+                          room.completion_percentage >= 50 ? 'text-blue-600' :
+                          'text-yellow-600'
+                        }`}>
+                          {room.completion_percentage}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            room.completion_percentage === 100 ? 'bg-green-500' :
+                            room.completion_percentage >= 50 ? 'bg-blue-500' :
+                            'bg-yellow-500'
+                          }`}
+                          style={{ width: `${room.completion_percentage}%` }}
+                        ></div>
+                      </div>
+                      {room.completion_percentage === 100 && (
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                          Ready for Occupation
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-4 border-t border-gray-100">
@@ -365,14 +477,14 @@ export default function Rooms({ user }) {
                     className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center gap-2 transition-colors"
                   >
                     <Eye className="w-4 h-4" />
-                    View
+                    {t("view")}
                   </button>
                   <button
                     onClick={() => handleEdit(room)}
                     className="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg flex items-center justify-center gap-2 transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
-                    Edit
+                    {t("edit")}
                   </button>
                   <button
                     onClick={() => handleDelete(room)}
@@ -394,13 +506,13 @@ export default function Rooms({ user }) {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Room</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Floor</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Occupancy</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Bed Type</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{t("room")}</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{t("floor")}</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{t("type")}</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{t("status")}</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{t("occupancy")}</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{t("bedType")}</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -413,15 +525,15 @@ export default function Rooms({ user }) {
                       <div className="text-sm text-gray-600">{room.floor}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">{room.room_type}</div>
+                      <div className="text-sm text-gray-900">{t(room.room_type)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusBadgeColor(room.status)}`}>
-                        {room.status.replace('_', ' ')}
+                        {t(room.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-gray-900 capitalize">{room.occupancy_status}</span>
+                      <span className="text-sm font-medium text-gray-900">{t(room.occupancy_status)}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 capitalize">{room.bed_type || '-'}</div>
@@ -510,8 +622,12 @@ export default function Rooms({ user }) {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Status *</label>
                   <Select
                     value={{ value: formData.status, label: formData.status.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
-                    onChange={(option) => setFormData({ ...formData, status: option?.value || 'clean' })}
-                    options={statusTypes.map(status => ({ value: status, label: status.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }))}
+                    onChange={(option) => setFormData({ ...formData, status: option?.value || 'vacant' })}
+                    options={statusTypes.map(status => ({
+                      value: status,
+                      label: status.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                      isDisabled: modalMode === 'edit' && status === 'vacant' && Boolean(selectedRoom?.has_housekeeping_assignment) && !Boolean(selectedRoom?.rfo_eligible)
+                    }))}
                     isDisabled={modalMode === 'view'}
                     styles={customSelectStyles}
                     isSearchable
@@ -580,6 +696,16 @@ export default function Rooms({ user }) {
               </div>
 
               <div className="flex gap-3 mt-6 justify-end">
+                {modalMode === 'view' && selectedRoom?.occupancy_status === 'occupied' && (
+                  <button
+                    type="button"
+                    onClick={handleTurnDownRequest}
+                    disabled={creatingTurnDown}
+                    className="px-6 py-2.5 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    {creatingTurnDown ? 'Creating...' : 'Turn Down Request'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}

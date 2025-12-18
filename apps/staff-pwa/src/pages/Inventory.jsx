@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Plus, Search, Package, AlertTriangle, TrendingDown, TrendingUp, UserPlus, X, ShoppingCart, Trash2, Edit2 } from 'lucide-react'
+import { translations } from '../translations'
 
-export default function Inventory({ user }) {
+export default function Inventory({ user, lang = 'en' }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -28,6 +29,8 @@ export default function Inventory({ user }) {
   const [cart, setCart] = useState([])
   const [itemSearchQuery, setItemSearchQuery] = useState('')
   const [staffSearchQuery, setStaffSearchQuery] = useState('')
+  
+  const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
 
   useEffect(() => {
     console.log('🔵 Inventory v3.0 - WITH STAFF CARTS')
@@ -291,9 +294,9 @@ export default function Inventory({ user }) {
   }
 
   const getStockStatus = (item) => {
-    if (item.current_stock === 0) return { text: 'Out of Stock', color: 'bg-red-100 text-red-700 border-red-200' }
-    if (item.current_stock <= item.reorder_level) return { text: 'Low Stock', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' }
-    return { text: 'In Stock', color: 'bg-green-100 text-green-700 border-green-200' }
+    if (item.current_stock === 0) return { text: t('outOfStock'), color: 'bg-red-100 text-red-700 border-red-200' }
+    if (item.current_stock <= item.reorder_level) return { text: t('lowStock'), color: 'bg-yellow-100 text-yellow-700 border-yellow-200' }
+    return { text: t('inStock'), color: 'bg-green-100 text-green-700 border-green-200' }
   }
 
   if (loading) {
@@ -341,10 +344,10 @@ export default function Inventory({ user }) {
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Items', value: stats.total, color: 'from-blue-500 to-blue-600', icon: Package },
-          { label: 'In Stock', value: stats.in_stock, color: 'from-green-500 to-green-600', icon: TrendingUp },
-          { label: 'Low Stock', value: stats.low_stock, color: 'from-yellow-500 to-yellow-600', icon: AlertTriangle },
-          { label: 'Out of Stock', value: stats.out_of_stock, color: 'from-red-500 to-red-600', icon: TrendingDown },
+          { label: t('totalItems'), value: stats.total, color: 'from-blue-500 to-blue-600', icon: Package },
+          { label: t('inStock'), value: stats.in_stock, color: 'from-green-500 to-green-600', icon: TrendingUp },
+          { label: t('lowStock'), value: stats.low_stock, color: 'from-yellow-500 to-yellow-600', icon: AlertTriangle },
+          { label: t('outOfStock'), value: stats.out_of_stock, color: 'from-red-500 to-red-600', icon: TrendingDown },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
@@ -367,7 +370,7 @@ export default function Inventory({ user }) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search items..."
+              placeholder={t('search') + '...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -378,7 +381,7 @@ export default function Inventory({ user }) {
             className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
           >
             <Plus className="w-5 h-5" />
-            Add New Item
+            {t('addNewItem')}
           </button>
         </div>
       </div>
@@ -415,20 +418,20 @@ export default function Inventory({ user }) {
 
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">Current Stock</span>
+                  <span className="text-sm text-gray-600">{t('currentStock')}</span>
                   <span className="text-xl font-bold text-gray-900">{item.current_stock}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Reorder Level:</span>
+                  <span className="text-gray-600">{t('reorderLevel')}:</span>
                   <span className="font-semibold text-gray-900">{item.reorder_level}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Unit:</span>
+                  <span className="text-gray-600">{t('unit')}:</span>
                   <span className="font-semibold text-gray-900 capitalize">{item.unit}</span>
                 </div>
                 {item.location && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Location:</span>
+                    <span className="text-gray-600">{t('location')}:</span>
                     <span className="font-semibold text-gray-900">{item.location}</span>
                   </div>
                 )}
@@ -706,7 +709,7 @@ export default function Inventory({ user }) {
             <form onSubmit={handleSaveItem} className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Item Name (English) *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('itemName')} (English) *</label>
                   <input
                     type="text"
                     value={itemFormData.item_name_en}
@@ -717,7 +720,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Item Name (Arabic)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('itemName')} (Arabic)</label>
                   <input
                     type="text"
                     value={itemFormData.item_name_ar}
@@ -728,7 +731,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('category')} *</label>
                   <select
                     value={itemFormData.category}
                     onChange={(e) => setItemFormData({ ...itemFormData, category: e.target.value })}
@@ -746,7 +749,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Unit *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('unit')} *</label>
                   <select
                     value={itemFormData.unit}
                     onChange={(e) => setItemFormData({ ...itemFormData, unit: e.target.value })}
@@ -764,7 +767,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Current Stock *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('currentStock')} *</label>
                   <input
                     type="number"
                     value={itemFormData.current_stock}
@@ -776,7 +779,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Reorder Level *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('reorderLevel')} *</label>
                   <input
                     type="number"
                     value={itemFormData.reorder_level}
@@ -788,7 +791,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('location')}</label>
                   <input
                     type="text"
                     value={itemFormData.location}
@@ -799,7 +802,7 @@ export default function Inventory({ user }) {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('notes')}</label>
                   <textarea
                     value={itemFormData.notes}
                     onChange={(e) => setItemFormData({ ...itemFormData, notes: e.target.value })}
@@ -816,7 +819,7 @@ export default function Inventory({ user }) {
                   onClick={() => setShowItemModal(false)}
                   className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
@@ -825,12 +828,12 @@ export default function Inventory({ user }) {
                   {modalMode === 'edit' ? (
                     <>
                       <Edit2 className="w-5 h-5" />
-                      Update Item
+                      {t('update')} {t('itemName')}
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5" />
-                      Add Item
+                      {t('add')} {t('itemName')}
                     </>
                   )}
                 </button>

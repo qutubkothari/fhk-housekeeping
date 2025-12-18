@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { DoorOpen, ClipboardCheck, Package, AlertCircle, Shirt, Wrench, TrendingUp, Users } from 'lucide-react'
+import { translations } from '../translations'
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, lang = 'en' }) {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  
+  const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
 
   useEffect(() => {
     fetchDashboardStats()
@@ -84,36 +87,36 @@ export default function Dashboard({ user }) {
 
   const statCards = [
     {
-      title: 'Total Rooms',
+      title: t('totalRooms'),
       value: stats?.rooms?.total || 0,
-      subtitle: `${stats?.rooms?.vacant || 0} Vacant`,
+      subtitle: `${stats?.rooms?.vacant || 0} ${t('vacant')}`,
       icon: DoorOpen,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600'
     },
     {
-      title: 'Tasks Today',
+      title: t('tasksToday'),
       value: stats?.tasks_today?.completed || 0,
-      subtitle: `${stats?.tasks_today?.pending || 0} Pending`,
+      subtitle: `${stats?.tasks_today?.pending || 0} ${t('pending')}`,
       icon: ClipboardCheck,
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50',
       textColor: 'text-green-600'
     },
     {
-      title: 'Service Requests',
+      title: t('serviceRequests'),
       value: stats?.service_requests?.open || 0,
-      subtitle: `${stats?.service_requests?.urgent || 0} Urgent`,
+      subtitle: `${stats?.service_requests?.urgent || 0} ${t('urgent')}`,
       icon: Wrench,
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-600'
     },
     {
-      title: 'Low Stock Items',
+      title: t('lowStockItems'),
       value: stats?.inventory?.low_stock_items || 0,
-      subtitle: 'Inventory Alert',
+      subtitle: t('inventoryAlert'),
       icon: Package,
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-50',
@@ -125,8 +128,8 @@ export default function Dashboard({ user }) {
     <div className="space-y-6">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.full_name}!</h1>
-        <p className="text-blue-100">Here's what's happening with your hotel today</p>
+        <h1 className="text-3xl font-bold mb-2">{t('welcomeBack')}, {user?.full_name}!</h1>
+        <p className="text-blue-100">{t('happeningToday')}</p>
       </div>
 
       {/* Stats Grid */}
@@ -151,14 +154,14 @@ export default function Dashboard({ user }) {
 
       {/* Room Status Overview */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6 text-gray-900">Room Status Overview</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-900">{t('roomStatusOverview')}</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: 'Total', value: stats?.rooms?.total || 0, color: 'from-gray-500 to-gray-600', bg: 'bg-gray-50' },
-            { label: 'Occupied', value: stats?.rooms?.occupied || 0, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50' },
-            { label: 'Vacant', value: stats?.rooms?.vacant || 0, color: 'from-green-500 to-green-600', bg: 'bg-green-50' },
-            { label: 'Cleaning', value: stats?.rooms?.cleaning || 0, color: 'from-yellow-500 to-yellow-600', bg: 'bg-yellow-50' },
-            { label: 'Maintenance', value: stats?.rooms?.maintenance || 0, color: 'from-red-500 to-red-600', bg: 'bg-red-50' },
+            { label: t('total'), value: stats?.rooms?.total || 0, color: 'from-gray-500 to-gray-600', bg: 'bg-gray-50' },
+            { label: t('occupied'), value: stats?.rooms?.occupied || 0, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50' },
+            { label: t('vacant'), value: stats?.rooms?.vacant || 0, color: 'from-green-500 to-green-600', bg: 'bg-green-50' },
+            { label: t('cleaning'), value: stats?.rooms?.cleaning || 0, color: 'from-yellow-500 to-yellow-600', bg: 'bg-yellow-50' },
+            { label: t('maintenance'), value: stats?.rooms?.maintenance || 0, color: 'from-red-500 to-red-600', bg: 'bg-red-50' },
           ].map((item, index) => (
             <div key={index} className={`text-center p-6 ${item.bg} rounded-xl border-2 border-transparent hover:border-gray-300 transition-all`}>
               <p className={`text-4xl font-bold bg-gradient-to-r ${item.color} bg-clip-text text-transparent mb-2`}>
@@ -177,13 +180,13 @@ export default function Dashboard({ user }) {
             <div className="p-2 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg">
               <Shirt className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Linen Management</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t('linenManagement')}</h2>
           </div>
           <div className="space-y-4">
             {[
-              { label: 'Clean', value: stats?.linen?.clean || 0, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Soiled', value: stats?.linen?.soiled || 0, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-              { label: 'In Laundry', value: stats?.linen?.in_laundry || 0, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: t('clean'), value: stats?.linen?.clean || 0, color: 'text-green-600', bg: 'bg-green-50' },
+              { label: t('soiled'), value: stats?.linen?.soiled || 0, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+              { label: t('inLaundry'), value: stats?.linen?.in_laundry || 0, color: 'text-blue-600', bg: 'bg-blue-50' },
             ].map((item, index) => (
               <div key={index} className={`flex justify-between items-center p-4 ${item.bg} rounded-lg`}>
                 <span className="font-medium text-gray-700">{item.label}</span>
@@ -198,13 +201,13 @@ export default function Dashboard({ user }) {
             <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg">
               <AlertCircle className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Alerts & Notifications</h2>
+            <h2 className="text-xl font-bold text-gray-900">{t('alerts')}</h2>
           </div>
           <div className="space-y-4">
             <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-red-800">Low Stock Alert</p>
+                  <p className="font-semibold text-red-800">{t('lowStockItems')}</p>
                   <p className="text-sm text-red-600 mt-1">
                     {stats?.inventory?.low_stock_items || 0} items need reordering
                   </p>
@@ -215,7 +218,7 @@ export default function Dashboard({ user }) {
             <div className="p-4 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-orange-800">Urgent Requests</p>
+                  <p className="font-semibold text-orange-800">{t('urgent')} {t('serviceRequests')}</p>
                   <p className="text-sm text-orange-600 mt-1">
                     {stats?.service_requests?.urgent || 0} high priority tasks
                   </p>

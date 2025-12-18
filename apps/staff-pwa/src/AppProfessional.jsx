@@ -13,19 +13,25 @@ import RealTimeMonitor from './pages/RealTimeMonitor'
 import SettingsPage from './pages/Settings'
 import StaffAssignments from './pages/StaffAssignments'
 import Analytics from './pages/Analytics'
+import ActivityMaster from './pages/ActivityMaster'
+import BulkAssignment from './pages/BulkAssignment'
+import LocationMaster from './pages/LocationMaster'
+import ShiftMaster from './pages/ShiftMaster'
+import VendorManagement from './pages/VendorManagement'
+import Procurement from './pages/Procurement'
 import { translations } from './translations'
 
 const SUPABASE_URL = 'https://oglmyyyhfwuhyghcbnmi.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nbG15eXloZnd1aHlnaGNibm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MzIwNTYsImV4cCI6MjA4MDUwODA1Nn0.dFZqm7_CiT3Dmx_Lbbm8Iyk2arsfLmnDd3GCfyGkIxE'
 
-const ISSUE_OPTIONS = {
-  'AC Issues': ['Not cooling', 'Not heating', 'Making noise', 'Remote not working', 'Leaking water'],
-  'Bed Issues': ['Sheets dirty', 'Mattress stained', 'Pillows missing', 'Bed frame broken', 'Bedding torn'],
-  'Bathroom Issues': ['Toilet not flushing', 'Sink clogged', 'Shower not working', 'No hot water', 'Tiles broken', 'Toilet seat broken'],
-  'Furniture Issues': ['Chair broken', 'Table damaged', 'Wardrobe door broken', 'Drawer stuck', 'Mirror cracked'],
-  'Electrical Issues': ['Lights not working', 'TV not working', 'Power outlet broken', 'Switch broken'],
-  'Cleanliness Issues': ['Carpet stained', 'Walls dirty', 'Windows dirty', 'Floor needs deep clean'],
-  'Other': ['Items missing', 'Odor problem', 'Pest problem', 'General maintenance needed']
+const ISSUE_OPTIONS_KEYS = {
+  'acIssues': ['notCooling', 'notHeating', 'makingNoise', 'remoteNotWorking', 'leakingWater'],
+  'bedIssues': ['sheetsDirty', 'mattressStained', 'pillowsMissing', 'bedFrameBroken', 'beddingTorn'],
+  'bathroomIssues': ['toiletNotFlushing', 'sinkClogged', 'showerNotWorking', 'noHotWater', 'tilesBroken', 'toiletSeatBroken'],
+  'furnitureIssues': ['chairBroken', 'tableDamaged', 'wardrobeDoorBroken', 'drawerStuck', 'mirrorCracked'],
+  'electricalIssues': ['lightsNotWorking', 'tvNotWorking', 'powerOutletBroken', 'switchBroken'],
+  'cleanlinessIssues': ['carpetStained', 'wallsDirty', 'windowsDirty', 'floorNeedsDeepClean'],
+  'other': ['itemsMissing', 'odorProblem', 'pestProblem', 'generalMaintenanceNeeded']
 }
 
 function App() {
@@ -682,6 +688,12 @@ function App() {
         'realtime': ['super_admin'],
         'assignments': ['super_admin'],
         'analytics': ['super_admin'],
+        'activity-master': ['super_admin'],
+        'bulk-assignment': ['super_admin'],
+        'location-master': ['super_admin'],
+        'shift-master': ['super_admin'],
+        'vendor-management': ['super_admin'],
+        'procurement': ['super_admin'],
         'settings': ['super_admin'],
       }
       return accessRules[page]?.includes(user.role) || false
@@ -707,19 +719,25 @@ function App() {
         lang={lang}
         onLangChange={setLang}
       >
-        {currentPage === 'dashboard' && (hasAccess('dashboard') ? <Dashboard user={user} /> : <AccessDenied />)}
-        {currentPage === 'rooms' && (hasAccess('rooms') ? <Rooms user={user} /> : <AccessDenied />)}
-        {currentPage === 'housekeeping' && (hasAccess('housekeeping') ? <Housekeeping user={user} /> : <AccessDenied />)}
-        {currentPage === 'maintenance' && (hasAccess('maintenance') ? <ServiceRequests user={user} /> : <AccessDenied />)}
-        {currentPage === 'staff' && (hasAccess('staff') ? <Staff user={user} /> : <AccessDenied />)}
-        {currentPage === 'inventory' && (hasAccess('inventory') ? <Inventory user={user} /> : <AccessDenied />)}
-        {currentPage === 'linen' && (hasAccess('linen') ? <Linen user={user} /> : <AccessDenied />)}
-        {currentPage === 'reports' && (hasAccess('reports') ? <Reports user={user} /> : <AccessDenied />)}
-        {currentPage === 'realtime' && (hasAccess('realtime') ? <RealTimeMonitor user={user} /> : <AccessDenied />)}
-        {currentPage === 'assignments' && (hasAccess('assignments') ? <StaffAssignments user={user} /> : <AccessDenied />)}
-        {currentPage === 'analytics' && (hasAccess('analytics') ? <Analytics user={user} /> : <AccessDenied />)}
-        {currentPage === 'settings' && (hasAccess('settings') ? <SettingsPage user={user} /> : <AccessDenied />)}
-        {!['dashboard', 'rooms', 'housekeeping', 'maintenance', 'staff', 'inventory', 'linen', 'reports', 'realtime', 'assignments', 'analytics', 'settings'].includes(currentPage) && (
+        {currentPage === 'dashboard' && (hasAccess('dashboard') ? <Dashboard user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'rooms' && (hasAccess('rooms') ? <Rooms user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'housekeeping' && (hasAccess('housekeeping') ? <Housekeeping user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'maintenance' && (hasAccess('maintenance') ? <ServiceRequests user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'staff' && (hasAccess('staff') ? <Staff user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'inventory' && (hasAccess('inventory') ? <Inventory user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'linen' && (hasAccess('linen') ? <Linen user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'reports' && (hasAccess('reports') ? <Reports user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'realtime' && (hasAccess('realtime') ? <RealTimeMonitor user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'assignments' && (hasAccess('assignments') ? <StaffAssignments user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'analytics' && (hasAccess('analytics') ? <Analytics user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'activity-master' && (hasAccess('activity-master') ? <ActivityMaster user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'bulk-assignment' && (hasAccess('bulk-assignment') ? <BulkAssignment user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'location-master' && (hasAccess('location-master') ? <LocationMaster user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'shift-master' && (hasAccess('shift-master') ? <ShiftMaster user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'vendor-management' && (hasAccess('vendor-management') ? <VendorManagement user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'procurement' && (hasAccess('procurement') ? <Procurement user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'settings' && (hasAccess('settings') ? <SettingsPage user={user} lang={lang} /> : <AccessDenied />)}
+        {!['dashboard', 'rooms', 'housekeeping', 'maintenance', 'staff', 'inventory', 'linen', 'reports', 'realtime', 'assignments', 'analytics', 'activity-master', 'bulk-assignment', 'location-master', 'vendor-management', 'procurement', 'settings'].includes(currentPage) && (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="text-6xl mb-4">🚧</div>
@@ -1308,30 +1326,30 @@ function App() {
             
             <div className="p-6 overflow-y-auto max-h-[calc(85vh-220px)]">
               <div className="space-y-4">
-                {Object.entries(ISSUE_OPTIONS).map(([category, issues]) => (
-                  <div key={category} className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+                {Object.entries(ISSUE_OPTIONS_KEYS).map(([categoryKey, issueKeys]) => (
+                  <div key={categoryKey} className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
                     <h3 className="font-bold text-lg mb-4 text-primary-900 flex items-center gap-2">
                       <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
                         <span className="text-primary-600">⚠️</span>
                       </div>
-                      {category}
+                      {t(categoryKey)}
                     </h3>
                     <div className="space-y-2">
-                      {issues.map(issue => (
+                      {issueKeys.map(issueKey => (
                         <label 
-                          key={issue} 
+                          key={issueKey} 
                           className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white rounded-xl transition-colors group"
                         >
                           <div className="relative">
                             <input
                               type="checkbox"
-                              checked={selectedIssues.includes(issue)}
-                              onChange={() => toggleIssue(issue)}
+                              checked={selectedIssues.includes(issueKey)}
+                              onChange={() => toggleIssue(issueKey)}
                               className="w-5 h-5 text-primary-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer"
                             />
                           </div>
-                          <span className="flex-1 text-gray-700 group-hover:text-gray-900">{issue}</span>
-                          {selectedIssues.includes(issue) && (
+                          <span className="flex-1 text-gray-700 group-hover:text-gray-900">{t(issueKey)}</span>
+                          {selectedIssues.includes(issueKey) && (
                             <Check className="w-5 h-5 text-emerald-600" />
                           )}
                         </label>

@@ -3,9 +3,15 @@ import { supabase } from '../lib/supabaseClient'
 import { Plus, Search, Edit2, Trash2, Eye, RefreshCw, Users as UsersIcon, Mail, Phone, Shield } from 'lucide-react'
 import Select from 'react-select'
 import { customSelectStyles } from '../utils/selectStyles'
+import { translations } from '../translations'
 
-export default function Staff({ user }) {
+export default function Staff({ user, lang = 'en' }) {
+  const t = (key) => translations[key]?.[lang] || key
+
   const [staff, setStaff] = useState([])
+  const [locations, setLocations] = useState([])
+  const [shifts, setShifts] = useState([])
+  const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('all')
@@ -17,16 +23,51 @@ export default function Staff({ user }) {
     email: '',
     phone: '',
     role: 'staff',
-    is_active: true
+    job_role: '',
+    is_active: true,
+    location_id: null,
+    shift_id: null,
   })
+  const [selectedOperationalActivities, setSelectedOperationalActivities] = useState([]) // array of activity_id
 
-  const roles = ['staff', 'supervisor', 'maintenance', 'front_desk', 'admin']
+  // System permission roles (used for access control + routing)
+  const systemRoles = ['super_admin', 'admin', 'supervisor', 'staff', 'maintenance', 'front_desk', 'inventory', 'laundry']
+
+  // Client-required job roles (stored separately from system role)
+  const jobRoles = [
+    'Passages East & West Cleaning',
+    'Rooms Cleaning',
+    'Washroom Cleaning',
+    'Lobby Area Cleaning',
+    'Supervisor',
+    'MST',
+    'Linen Attendant',
+    'Front Desk',
+    'Store',
+  ]
 
   useEffect(() => {
     if (user?.org_id) {
+      fetchReferenceData()
       fetchStaff()
     }
   }, [user?.org_id])
+
+  const fetchReferenceData = async () => {
+    try {
+      const [locRes, shiftRes, actRes] = await Promise.all([
+        supabase.from('locations').select('id, name, code').eq('org_id', user.org_id).eq('is_active', true).order('name'),
+        supabase.from('shifts').select('id, name, code, start_time, end_time').eq('org_id', user.org_id).eq('is_active', true).order('start_time'),
+        supabase.from('housekeeping_activities').select('id, name, code').eq('org_id', user.org_id).eq('is_active', true).order('sequence_order'),
+      ])
+
+      if (!locRes.error) setLocations(locRes.data || [])
+      if (!shiftRes.error) setShifts(shiftRes.data || [])
+      if (!actRes.error) setActivities(actRes.data || [])
+    } catch (error) {
+      console.error('Error fetching reference data:', error)
+    }
+  }
 
   const fetchStaff = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -54,8 +95,12 @@ export default function Staff({ user }) {
       email: '',
       phone: '',
       role: 'staff',
-      is_active: true
+      job_role: '',
+      is_active: true,
+      location_id: null,
+      shift_id: null,
     })
+    setSelectedOperationalActivities([])
     setShowModal(true)
   }
 
@@ -67,9 +112,29 @@ export default function Staff({ user }) {
       email: member.email,
       phone: member.phone || '',
       role: member.role,
-      is_active: member.is_active
+      job_role: member.job_role || '',
+      is_active: member.is_active,
+      location_id: member.location_id || null,
+      shift_id: member.shift_id || null,
     })
+    loadOperationalActivitiesForUser(member.id)
     setShowModal(true)
+  }
+
+  const loadOperationalActivitiesForUser = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_operational_activities')
+        .select('activity_id')
+        .eq('user_id', userId)
+
+      if (error) throw error
+      setSelectedOperationalActivities((data || []).map((r) => r.activity_id))
+    } catch (error) {
+      // If table doesn't exist yet or RLS blocks, don't break Staff page
+      console.warn('Operational activities mapping not available:', error?.message || error)
+      setSelectedOperationalActivities([])
+    }
   }
 
   const handleDelete = async (member) => {
@@ -90,10 +155,13 @@ export default function Staff({ user }) {
     e.preventDefault()
     try {
       if (modalMode === 'add') {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('users')
           .insert([{ ...formData, org_id: user.org_id }])
+          .select('id')
+          .single()
         if (error) throw error
+        await saveOperationalActivities(inserted?.id)
         alert('Staff member added successfully')
       } else {
         const { error } = await supabase
@@ -101,6 +169,7 @@ export default function Staff({ user }) {
           .update(formData)
           .eq('id', selectedStaff.id)
         if (error) throw error
+        await saveOperationalActivities(selectedStaff.id)
         alert('Staff member updated successfully')
       }
       setShowModal(false)
@@ -108,6 +177,29 @@ export default function Staff({ user }) {
     } catch (error) {
       console.error('Error:', error)
       alert('Failed to save staff member')
+    }
+  }
+
+  const saveOperationalActivities = async (userId) => {
+    if (!userId) return
+    try {
+      // Remove existing mappings
+      const del = await supabase.from('user_operational_activities').delete().eq('user_id', userId)
+      if (del.error) throw del.error
+
+      if (selectedOperationalActivities.length === 0) return
+
+      const payload = selectedOperationalActivities.map((activityId) => ({
+        org_id: user.org_id,
+        user_id: userId,
+        activity_id: activityId,
+      }))
+
+      const ins = await supabase.from('user_operational_activities').insert(payload)
+      if (ins.error) throw ins.error
+    } catch (error) {
+      // If table isn't present, don't block employee save
+      console.warn('Could not save operational activities:', error?.message || error)
     }
   }
 
@@ -145,10 +237,10 @@ export default function Staff({ user }) {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Staff', value: stats.total, color: 'from-blue-500 to-blue-600', icon: UsersIcon },
-          { label: 'Active', value: stats.active, color: 'from-green-500 to-green-600', icon: Shield },
-          { label: 'Staff Members', value: stats.staff, color: 'from-purple-500 to-purple-600', icon: UsersIcon },
-          { label: 'Supervisors', value: stats.supervisors, color: 'from-orange-500 to-orange-600', icon: Shield },
+          { label: t('totalStaff'), value: stats.total, color: 'from-blue-500 to-blue-600', icon: UsersIcon },
+          { label: t('active'), value: stats.active, color: 'from-green-500 to-green-600', icon: Shield },
+          { label: t('staffMembers'), value: stats.staff, color: 'from-purple-500 to-purple-600', icon: UsersIcon },
+          { label: t('supervisors'), value: stats.supervisors, color: 'from-orange-500 to-orange-600', icon: Shield },
         ].map((stat, i) => (
           <div key={i} className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between">
@@ -171,18 +263,25 @@ export default function Staff({ user }) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder={t("search")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <Select
-            value={{ value: filterRole, label: filterRole === 'all' ? 'All Roles' : filterRole.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
+            value={{ value: filterRole, label: filterRole === 'all' ? t('allRoles') : filterRole.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
             onChange={(option) => setFilterRole(option?.value || 'all')}
             options={[
-              { value: 'all', label: 'All Roles' },
-              ...roles.map(role => ({ value: role, label: role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }))
+              { value: 'all', label: t('allRoles') },
+              ...systemRoles.map((role) => ({
+                value: role,
+                label: String(role)
+                  .replace('_', ' ')
+                  .split(' ')
+                  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                  .join(' '),
+              })),
             ]}
             styles={customSelectStyles}
             isSearchable
@@ -219,6 +318,9 @@ export default function Staff({ user }) {
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
                     {member.role.replace('_', ' ')}
                   </span>
+                  {member.job_role ? (
+                    <div className="text-xs text-gray-600 mt-1">{member.job_role}</div>
+                  ) : null}
                 </div>
               </div>
               <div className={`w-3 h-3 rounded-full ${member.is_active ? 'bg-green-500' : 'bg-gray-400'}`} 
@@ -234,6 +336,23 @@ export default function Staff({ user }) {
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Phone className="w-4 h-4" />
                   <span>{member.phone}</span>
+                </div>
+              )}
+
+              {(member.location_id || member.shift_id) && (
+                <div className="text-xs text-gray-600 pt-1">
+                  {member.location_id && (
+                    <span className="mr-2">
+                      <span className="font-semibold">Location:</span>{' '}
+                      {locations.find((l) => l.id === member.location_id)?.name || '—'}
+                    </span>
+                  )}
+                  {member.shift_id && (
+                    <span>
+                      <span className="font-semibold">Shift:</span>{' '}
+                      {shifts.find((s) => s.id === member.shift_id)?.name || '—'}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -309,14 +428,100 @@ export default function Staff({ user }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Role *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">System Role *</label>
                   <Select
-                    value={{ value: formData.role, label: formData.role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
+                    value={{
+                      value: formData.role,
+                      label: String(formData.role)
+                        .replace('_', ' ')
+                        .split(' ')
+                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                        .join(' '),
+                    }}
                     onChange={(option) => setFormData({ ...formData, role: option?.value || 'staff' })}
-                    options={roles.map(role => ({ value: role, label: role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }))}
+                    options={systemRoles.map((role) => ({
+                      value: role,
+                      label: String(role)
+                        .replace('_', ' ')
+                        .split(' ')
+                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                        .join(' '),
+                    }))}
                     styles={customSelectStyles}
                     isSearchable
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Job Role</label>
+                  <Select
+                    value={formData.job_role ? { value: formData.job_role, label: formData.job_role } : null}
+                    onChange={(option) => setFormData({ ...formData, job_role: option?.value || '' })}
+                    options={jobRoles.map((r) => ({ value: r, label: r }))}
+                    styles={customSelectStyles}
+                    isClearable
+                    isSearchable
+                    placeholder="Select job role"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
+                  <Select
+                    value={
+                      formData.location_id
+                        ? {
+                            value: formData.location_id,
+                            label: locations.find((l) => l.id === formData.location_id)?.name || 'Selected Location',
+                          }
+                        : null
+                    }
+                    onChange={(option) => setFormData({ ...formData, location_id: option?.value || null })}
+                    options={locations.map((l) => ({ value: l.id, label: `${l.name} (${l.code})` }))}
+                    styles={customSelectStyles}
+                    isClearable
+                    isSearchable
+                    placeholder="Select location"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Shift</label>
+                  <Select
+                    value={
+                      formData.shift_id
+                        ? {
+                            value: formData.shift_id,
+                            label: shifts.find((s) => s.id === formData.shift_id)?.name || 'Selected Shift',
+                          }
+                        : null
+                    }
+                    onChange={(option) => setFormData({ ...formData, shift_id: option?.value || null })}
+                    options={shifts.map((s) => ({
+                      value: s.id,
+                      label: `${s.name} (${String(s.start_time).slice(0, 5)}-${String(s.end_time).slice(0, 5)})`,
+                    }))}
+                    styles={customSelectStyles}
+                    isClearable
+                    isSearchable
+                    placeholder="Select shift"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Operational Area (Activities)</label>
+                  <Select
+                    value={activities
+                      .filter((a) => selectedOperationalActivities.includes(a.id))
+                      .map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+                    onChange={(options) => setSelectedOperationalActivities((options || []).map((o) => o.value))}
+                    options={activities.map((a) => ({ value: a.id, label: `${a.name} (${a.code})` }))}
+                    styles={customSelectStyles}
+                    isMulti
+                    isSearchable
+                    placeholder="Select activities"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Used to map employees to their operational activities.</p>
                 </div>
 
                 <div className="flex items-center gap-2">

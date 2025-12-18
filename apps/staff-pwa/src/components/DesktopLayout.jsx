@@ -15,7 +15,9 @@ import {
   Menu,
   X,
   LogOut,
-  Languages
+  Languages,
+  MapPin,
+  Store
 } from 'lucide-react'
 import { translations } from '../translations'
 
@@ -30,27 +32,63 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
     document.body.dir = newLang === 'ar' ? 'rtl' : 'ltr'
   }
 
-  // Define menu items based on role
-  const getMenuItems = () => {
-    const allMenuItems = [
-      { id: 'dashboard', label: lang === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, roles: ['super_admin'] },
-      { id: 'rooms', label: lang === 'ar' ? 'الغرف' : 'Rooms', icon: BedDouble, roles: ['super_admin'] },
-      { id: 'staff', label: lang === 'ar' ? 'إدارة الموظفين' : 'Staff Management', icon: Users, roles: ['super_admin'] },
-      { id: 'housekeeping', label: lang === 'ar' ? 'التدبير المنزلي' : 'Housekeeping', icon: ClipboardList, roles: ['super_admin'] },
-      { id: 'maintenance', label: t('maintenance'), icon: Wrench, roles: ['super_admin'] },
-      { id: 'inventory', label: lang === 'ar' ? 'المخزون' : 'Inventory', icon: Package, roles: ['super_admin', 'inventory'] },
-      { id: 'linen', label: lang === 'ar' ? 'الغسيل والبياضات' : 'Linen & Laundry', icon: Shirt, roles: ['super_admin', 'laundry'] },
-      { id: 'reports', label: lang === 'ar' ? 'التقارير' : 'Reports', icon: FileText, roles: ['super_admin'] },
-      { id: 'realtime', label: lang === 'ar' ? 'المراقبة الفورية' : 'Real-Time Monitor', icon: Monitor, roles: ['super_admin'] },
-      { id: 'assignments', label: lang === 'ar' ? 'تعيينات الموظفين' : 'Staff Assignments', icon: Calendar, roles: ['super_admin'] },
-      { id: 'analytics', label: lang === 'ar' ? 'التحليلات' : 'Analytics', icon: BarChart3, roles: ['super_admin'] },
-      { id: 'settings', label: lang === 'ar' ? 'الإعدادات' : 'Settings', icon: Settings, roles: ['super_admin'] },
-    ]
-
-    return allMenuItems.filter(item => item.roles.includes(user.role))
+  const sectionLabels = {
+    overview: lang === 'ar' ? 'نظرة عامة' : 'Overview',
+    masters: lang === 'ar' ? 'البيانات الرئيسية' : 'Masters',
+    staff: lang === 'ar' ? 'الموظفين' : 'Staff',
+    housekeeping: lang === 'ar' ? 'التدبير المنزلي' : 'Housekeeping',
+    stores: lang === 'ar' ? 'المخازن' : 'Stores',
+    monitoring: lang === 'ar' ? 'المراقبة' : 'Monitoring',
+    reports: lang === 'ar' ? 'التقارير' : 'Reports',
+    system: lang === 'ar' ? 'النظام' : 'System',
   }
 
-  const menuItems = getMenuItems()
+  // Define menu items based on role
+  const getMenu = () => {
+    const allMenuItems = [
+      { id: 'dashboard', section: 'overview', label: lang === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, roles: ['super_admin'] },
+
+      { id: 'location-master', section: 'masters', label: lang === 'ar' ? 'إدارة المواقع' : 'Location Master', icon: MapPin, roles: ['super_admin'] },
+      { id: 'shift-master', section: 'masters', label: lang === 'ar' ? 'إدارة الورديات' : 'Shift Master', icon: Calendar, roles: ['super_admin'] },
+      { id: 'vendor-management', section: 'masters', label: lang === 'ar' ? 'إدارة الموردين' : 'Vendor Management', icon: Store, roles: ['super_admin'] },
+      { id: 'activity-master', section: 'masters', label: lang === 'ar' ? 'أنشطة التدبير' : 'Activity Master', icon: ClipboardList, roles: ['super_admin'] },
+
+      { id: 'staff', section: 'staff', label: lang === 'ar' ? 'إدارة الموظفين' : 'Staff Management', icon: Users, roles: ['super_admin'] },
+      { id: 'assignments', section: 'staff', label: lang === 'ar' ? 'تعيينات الموظفين' : 'Staff Assignments', icon: Calendar, roles: ['super_admin'] },
+
+      { id: 'rooms', section: 'housekeeping', label: lang === 'ar' ? 'الغرف' : 'Rooms', icon: BedDouble, roles: ['super_admin'] },
+      { id: 'housekeeping', section: 'housekeeping', label: lang === 'ar' ? 'التدبير المنزلي' : 'Housekeeping', icon: ClipboardList, roles: ['super_admin'] },
+      { id: 'bulk-assignment', section: 'housekeeping', label: lang === 'ar' ? 'التعيين الجماعي' : 'Bulk Assignment', icon: Calendar, roles: ['super_admin'] },
+      { id: 'maintenance', section: 'housekeeping', label: t('maintenance'), icon: Wrench, roles: ['super_admin'] },
+
+      { id: 'inventory', section: 'stores', label: lang === 'ar' ? 'المخزون' : 'Inventory', icon: Package, roles: ['super_admin', 'inventory'] },
+      { id: 'linen', section: 'stores', label: lang === 'ar' ? 'الغسيل والبياضات' : 'Linen & Laundry', icon: Shirt, roles: ['super_admin', 'laundry'] },
+      { id: 'procurement', section: 'stores', label: lang === 'ar' ? 'المشتريات' : 'Procurement', icon: Package, roles: ['super_admin'] },
+
+      { id: 'realtime', section: 'monitoring', label: lang === 'ar' ? 'المراقبة الفورية' : 'Real-Time Monitor', icon: Monitor, roles: ['super_admin'] },
+
+      { id: 'reports', section: 'reports', label: lang === 'ar' ? 'التقارير' : 'Reports', icon: FileText, roles: ['super_admin'] },
+      { id: 'analytics', section: 'reports', label: lang === 'ar' ? 'التحليلات' : 'Analytics', icon: BarChart3, roles: ['super_admin'] },
+
+      { id: 'settings', section: 'system', label: lang === 'ar' ? 'الإعدادات' : 'Settings', icon: Settings, roles: ['super_admin'] },
+    ]
+
+    const visibleItems = allMenuItems.filter(item => item.roles.includes(user.role))
+
+    const sectionOrder = ['overview', 'masters', 'staff', 'housekeeping', 'stores', 'monitoring', 'reports', 'system']
+    const sections = sectionOrder
+      .map(sectionId => {
+        const items = visibleItems.filter(item => item.section === sectionId)
+        return items.length
+          ? { id: sectionId, label: sectionLabels[sectionId] || sectionId, items }
+          : null
+      })
+      .filter(Boolean)
+
+    return { visibleItems, sections }
+  }
+
+  const { visibleItems: menuItems, sections: menuSections } = getMenu()
   
   // Check if user has access to current page and redirect if needed
   useEffect(() => {
@@ -99,25 +137,60 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
 
         {/* Navigation Menu */}
         <nav className="flex-1 overflow-y-auto py-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon
-            const isActive = currentPage === item.id
-            
-            return (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
-                  isActive 
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' 
-                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                } ${!sidebarOpen && 'justify-center'}`}
-              >
-                <Icon size={20} />
-                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-              </button>
-            )
-          })}
+          {!sidebarOpen && (
+            <>
+              {menuItems.map((item) => {
+                const Icon = item.icon
+                const isActive = currentPage === item.id
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onNavigate(item.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                        : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    } justify-center`}
+                    title={item.label}
+                  >
+                    <Icon size={20} />
+                  </button>
+                )
+              })}
+            </>
+          )}
+
+          {sidebarOpen && (
+            <>
+              {menuSections.map((section) => (
+                <div key={section.id} className="mb-2">
+                  <div className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    {section.label}
+                  </div>
+                  {section.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = currentPage === item.id
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onNavigate(item.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 transition-all ${
+                          isActive
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                            : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <Icon size={20} />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </>
+          )}
         </nav>
 
         {/* Sign Out Button */}
