@@ -10,6 +10,8 @@ export default function ActivityTasks({ lang, user }) {
   const [selectedRoom, setSelectedRoom] = useState(null)
   const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
+  const [draftNotes, setDraftNotes] = useState({})
+  const [savingNotes, setSavingNotes] = useState({})
 
   const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
 
@@ -120,6 +122,37 @@ export default function ActivityTasks({ lang, user }) {
     } catch (error) {
       console.error('Error completing activity:', error)
       alert(t('error'))
+    }
+  }
+
+  const saveActivityNotes = async (activityAssignmentId) => {
+    try {
+      setSavingNotes(prev => ({ ...prev, [activityAssignmentId]: true }))
+      const notesValue = (draftNotes[activityAssignmentId] ?? '').trim()
+
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/activity_assignments?id=eq.${activityAssignmentId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            notes: notesValue.length ? notesValue : null
+          })
+        }
+      )
+
+      if (!response.ok) throw new Error('Failed to save notes')
+      loadAssignments()
+    } catch (error) {
+      console.error('Error saving notes:', error)
+      alert(t('error'))
+    } finally {
+      setSavingNotes(prev => ({ ...prev, [activityAssignmentId]: false }))
     }
   }
 
@@ -235,6 +268,28 @@ export default function ActivityTasks({ lang, user }) {
                     )}
                   </div>
 
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      {t('notes') || 'Notes'}
+                    </label>
+                    <textarea
+                      value={draftNotes[actAssignment.id] ?? ''}
+                      onChange={(e) => setDraftNotes(prev => ({ ...prev, [actAssignment.id]: e.target.value }))}
+                      placeholder="Add details (optional)"
+                      rows={2}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveActivityNotes(actAssignment.id)}
+                      disabled={Boolean(savingNotes[actAssignment.id])}
+                      className="w-full py-2 rounded-lg text-sm font-medium border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-60"
+                    >
+                      {Boolean(savingNotes[actAssignment.id]) ? (t('saving') || 'Saving...') : (t('save') || 'Save')}
+                    </button>
+                  </div>
+
                   {/* Action Button */}
                   {!isCompleted && (
                     <button
@@ -309,7 +364,14 @@ export default function ActivityTasks({ lang, user }) {
           return (
             <button
               key={roomAssignment.id}
-              onClick={() => setSelectedRoom(roomAssignment)}
+              onClick={() => {
+                setSelectedRoom(roomAssignment)
+                const initialNotes = {}
+                roomAssignment.activities.forEach(a => {
+                  initialNotes[a.id] = a.notes || ''
+                })
+                setDraftNotes(initialNotes)
+              }}
               className="w-full bg-white rounded-lg border-2 border-gray-200 p-4 text-left hover:border-blue-500 transition-colors"
             >
               <div className="flex items-start justify-between mb-3">
