@@ -877,14 +877,36 @@ function App() {
                 <h2 className="text-2xl font-bold text-gray-900">{lang === 'ar' ? 'المشرف' : 'Supervisor'}</h2>
                 <p className="text-gray-600">{lang === 'ar' ? 'تعيينات الغرف ونسبة الإنجاز' : 'Room assignments and completion'}</p>
               </div>
-              <button
-                onClick={() => setPage('bulk-assignment')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
-              >
-                {lang === 'ar' ? 'تعيين جماعي' : 'Bulk Assignment'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage('assignments')}
+                  className="bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
+                >
+                  {lang === 'ar' ? 'التعيينات' : 'Assignments'}
+                </button>
+                <button
+                  onClick={() => setPage('bulk-assignment')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
+                >
+                  {lang === 'ar' ? 'تعيين جماعي' : 'Bulk Assignment'}
+                </button>
+              </div>
             </div>
             <Rooms user={user} lang={lang} />
+          </div>
+        )}
+
+        {user.role === 'supervisor' && page === 'assignments' && (
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-4">
+              <button
+                onClick={() => setPage('rooms')}
+                className="text-purple-700 font-semibold"
+              >
+                {lang === 'ar' ? 'رجوع' : 'Back'}
+              </button>
+            </div>
+            <StaffAssignments user={user} lang={lang} />
           </div>
         )}
 

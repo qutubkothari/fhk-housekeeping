@@ -42,26 +42,72 @@ export default function StaffAssignments({ user }) {
 
       if (roomsError) throw roomsError
 
-      // Load assignments (housekeeping tasks for the selected date)
-      const { data: assignmentsData, error: assignmentsError } = await supabase
-        .from('housekeeping_tasks')
+      // New flow: load room assignments for the selected date
+      const { data: roomAssignments, error: roomAssignmentsError } = await supabase
+        .from('room_assignments')
         .select(`
-          *,
-          rooms (room_number, floor, room_type),
-          assigned_user:assigned_to (full_name, role)
+          id,
+          assignment_date,
+          assignment_type,
+          status,
+          completion_percentage,
+          created_at,
+          rooms (room_number, floor, room_type)
         `)
         .eq('org_id', user.org_id)
-        .gte('scheduled_date', filterDate)
-        .lte('scheduled_date', filterDate + 'T23:59:59')
-        .order('scheduled_date')
+        .eq('assignment_date', filterDate)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
 
-      if (assignmentsError?.code === '42P01') {
+      if (roomAssignmentsError?.code === '42P01') {
         setLegacyAssignmentsUnavailable(true)
         setAssignments([])
       } else {
-        if (assignmentsError) throw assignmentsError
+        if (roomAssignmentsError) throw roomAssignmentsError
         setLegacyAssignmentsUnavailable(false)
-        setAssignments(assignmentsData || [])
+
+        const roomAssignmentIds = (roomAssignments || []).map(r => r.id)
+        if (roomAssignmentIds.length === 0) {
+          setAssignments([])
+        } else {
+          const { data: activityAssignments, error: activityAssignmentsError } = await supabase
+            .from('activity_assignments')
+            .select(`
+              id,
+              room_assignment_id,
+              assigned_to,
+              status,
+              started_at,
+              completed_at,
+              time_taken_minutes,
+              notes,
+              housekeeping_activities (name, sequence_order)
+            `)
+            .in('room_assignment_id', roomAssignmentIds)
+
+          if (activityAssignmentsError) throw activityAssignmentsError
+
+          const staffById = new Map((staffData || []).map(s => [s.id, s]))
+          const roomByAssignmentId = new Map((roomAssignments || []).map(ra => [ra.id, ra]))
+
+          const rows = (activityAssignments || []).map(a => {
+            const ra = roomByAssignmentId.get(a.room_assignment_id)
+            const staffMember = staffById.get(a.assigned_to)
+            return {
+              id: a.id,
+              assigned_to: a.assigned_to,
+              status: a.status,
+              room_assignment_id: a.room_assignment_id,
+              assignment_type: ra?.assignment_type,
+              completion_percentage: ra?.completion_percentage ?? 0,
+              rooms: ra?.rooms,
+              activity: a.housekeeping_activities,
+              assigned_user: staffMember ? { full_name: staffMember.full_name, role: staffMember.role } : null,
+            }
+          })
+
+          setAssignments(rows)
+        }
       }
 
       setStaff(staffData || [])
@@ -246,6 +292,11 @@ export default function StaffAssignments({ user }) {
                             Room {assignment.rooms?.room_number}
                           </h4>
                           <p className="text-sm text-gray-500">Floor {assignment.rooms?.floor}</p>
+                          {assignment.activity?.name && (
+                            <p className="text-sm text-gray-700 mt-1">
+                              {assignment.activity.name}
+                            </p>
+                          )}
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold border capitalize ${getStatusColor(assignment.status)}`}>
                           {assignment.status.replace('_', ' ')}
@@ -254,14 +305,14 @@ export default function StaffAssignments({ user }) {
                       
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-700">{new Date(assignment.scheduled_date).toLocaleDateString()}</span>
+                          <span className="text-gray-600">Type:</span>
+                          <span className="text-gray-900 font-semibold">
+                            {(assignment.assignment_type || 'assignment').replace(/_/g, ' ')}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <span className={`font-semibold ${getPriorityColor(assignment.priority)}`}>
-                            {assignment.priority?.toUpperCase() || 'NORMAL'}
-                          </span>
-                          <span className="text-gray-500 capitalize">Priority</span>
+                          <span className="text-gray-600">Room Completion:</span>
+                          <span className="text-gray-900 font-semibold">{assignment.completion_percentage || 0}%</span>
                         </div>
                       </div>
                     </div>
