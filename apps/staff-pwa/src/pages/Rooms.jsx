@@ -600,10 +600,16 @@ export default function Rooms({ user, lang = 'en' }) {
                   <input
                     type="number"
                     value={formData.floor}
-                    onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                    onChange={(e) => {
+                      const nextValue = e.target.value
+                      setFormData({
+                        ...formData,
+                        floor: nextValue === '' ? '' : Number.parseInt(nextValue, 10)
+                      })
+                    }}
                     disabled={modalMode === 'view'}
                     required
-                    min="1"
+                    min="0"
                     className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 transition-all"
                   />
                 </div>
