@@ -296,6 +296,14 @@ export default function Rooms({ user, lang = 'en' }) {
         .filter(f => Number.isFinite(f))
     )
   ].sort((a, b) => a - b)
+
+  const floorOptions = [
+    { value: 'all', label: 'All Floors' },
+    ...floors.map(floor => ({ value: String(floor), label: `Floor ${floor}` }))
+  ]
+
+  const selectedFloorOption =
+    floorOptions.find(o => o.value === String(filterFloor)) || floorOptions[0]
   const statusCounts = {
     vacant: rooms.filter(r => r.status === 'vacant').length,
     occupied: rooms.filter(r => r.status === 'occupied').length,
@@ -353,12 +361,9 @@ export default function Rooms({ user, lang = 'en' }) {
             </div>
 
             <Select
-              value={{ value: filterFloor, label: filterFloor === 'all' ? 'All Floors' : `Floor ${filterFloor}` }}
-              onChange={(option) => setFilterFloor(option?.value || 'all')}
-              options={[
-                { value: 'all', label: 'All Floors' },
-                ...floors.map(floor => ({ value: String(floor), label: `Floor ${floor}` }))
-              ]}
+              value={selectedFloorOption}
+              onChange={(option) => setFilterFloor(option?.value ?? 'all')}
+              options={floorOptions}
               styles={customSelectStyles}
               isSearchable
               className="min-w-[160px]"
