@@ -550,16 +550,13 @@ function App() {
 
                 // 1) Preferred: Database lookup by phone (normalized client-side)
                 try {
-                  const candidates = await api(
-                    'users?select=id,org_id,full_name,full_name_ar,role,email,phone,phone_number,is_active&is_active=eq.true&limit=5000'
+                  const orFilter = encodeURIComponent(`(phone.eq.${mobileDigits},phone_number.eq.${mobileDigits})`)
+                  const results = await api(
+                    `users?select=id,org_id,full_name,full_name_ar,role,email,phone,phone_number,is_active&is_active=eq.true&or=${orFilter}&limit=1`
                   )
-                  const matched = (candidates || []).find((u) => {
-                    const phoneDigits = normalizePhoneDigits(u?.phone)
-                    const phoneNumberDigits = normalizePhoneDigits(u?.phone_number)
-                    return phoneDigits === mobileDigits || phoneNumberDigits === mobileDigits
-                  })
+                  const matched = Array.isArray(results) ? results[0] : null
 
-                  if (matched) {
+                  if (matched?.id) {
                     const loginUser = {
                       id: matched.id,
                       full_name: matched.full_name,

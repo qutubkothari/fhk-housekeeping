@@ -19,6 +19,6 @@ WHERE COALESCE(phone_number, phone) IS NOT NULL;
 -- 4) Optional: set admin demo phone if missing (so admin can also login by phone)
 -- Pick any number you want; update it later in Staff > Edit User.
 UPDATE users
-SET phone = COALESCE(phone, '966501234567'),
-    phone_number = COALESCE(phone_number, regexp_replace(COALESCE(phone, '966501234567'), '[^0-9]', '', 'g'))
+SET phone = COALESCE(NULLIF(phone, ''), '966501234567'),
+    phone_number = COALESCE(NULLIF(phone_number, ''), regexp_replace(COALESCE(NULLIF(phone, ''), '966501234567'), '[^0-9]', '', 'g'))
 WHERE email = 'admin@demohotel.com';
