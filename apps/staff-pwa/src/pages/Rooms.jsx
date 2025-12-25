@@ -8,6 +8,12 @@ import { translations } from '../translations'
 export default function Rooms({ user, lang = 'en' }) {
   const t = (key) => translations[key]?.[lang] || key
 
+  const normalizeFloor = (value) => {
+    if (value === null || value === undefined || value === '') return null
+    const parsed = Number.parseInt(String(value).trim(), 10)
+    return Number.isFinite(parsed) ? String(parsed) : null
+  }
+
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -272,13 +278,24 @@ export default function Rooms({ user, lang = 'en' }) {
 
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = room.room_number.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFloor = filterFloor === 'all' || room.floor.toString() === filterFloor
+    const selectedFloor = filterFloor === 'all' ? null : normalizeFloor(filterFloor)
+    const roomFloor = normalizeFloor(room.floor)
+    const matchesFloor = filterFloor === 'all' || (selectedFloor !== null && roomFloor === selectedFloor)
     const matchesType = filterType === 'all' || room.room_type === filterType
     const matchesStatus = filterStatus === 'all' || room.status === filterStatus
     return matchesSearch && matchesFloor && matchesType && matchesStatus
   })
 
-  const floors = [...new Set(rooms.map(r => r.floor))].sort()
+  const floors = [
+    ...new Set(
+      rooms
+        .map(r => r.floor)
+        .map(f => normalizeFloor(f))
+        .filter(Boolean)
+        .map(f => Number.parseInt(f, 10))
+        .filter(f => Number.isFinite(f))
+    )
+  ].sort((a, b) => a - b)
   const statusCounts = {
     vacant: rooms.filter(r => r.status === 'vacant').length,
     occupied: rooms.filter(r => r.status === 'occupied').length,
@@ -340,7 +357,7 @@ export default function Rooms({ user, lang = 'en' }) {
               onChange={(option) => setFilterFloor(option?.value || 'all')}
               options={[
                 { value: 'all', label: 'All Floors' },
-                ...floors.map(floor => ({ value: floor, label: `Floor ${floor}` }))
+                ...floors.map(floor => ({ value: String(floor), label: `Floor ${floor}` }))
               ]}
               styles={customSelectStyles}
               isSearchable
