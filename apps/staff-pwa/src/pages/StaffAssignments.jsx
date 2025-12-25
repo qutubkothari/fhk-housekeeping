@@ -9,6 +9,7 @@ export default function StaffAssignments({ user }) {
   const [staff, setStaff] = useState([])
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
+  const [legacyAssignmentsUnavailable, setLegacyAssignmentsUnavailable] = useState(false)
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0])
   const [filterStaff, setFilterStaff] = useState('all')
 
@@ -54,11 +55,17 @@ export default function StaffAssignments({ user }) {
         .lte('scheduled_date', filterDate + 'T23:59:59')
         .order('scheduled_date')
 
-      if (assignmentsError) throw assignmentsError
+      if (assignmentsError?.code === '42P01') {
+        setLegacyAssignmentsUnavailable(true)
+        setAssignments([])
+      } else {
+        if (assignmentsError) throw assignmentsError
+        setLegacyAssignmentsUnavailable(false)
+        setAssignments(assignmentsData || [])
+      }
 
       setStaff(staffData || [])
       setRooms(roomsData || [])
-      setAssignments(assignmentsData || [])
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -105,6 +112,20 @@ export default function StaffAssignments({ user }) {
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div></div>
+  }
+
+  if (legacyAssignmentsUnavailable) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-gray-900">Staff Assignments</h1>
+        <p className="text-gray-600 mt-2">
+          This deployment uses the new activity-based workflow. The legacy table <span className="font-semibold">housekeeping_tasks</span> is not available.
+        </p>
+        <p className="text-gray-600 mt-2">
+          Use <span className="font-semibold">Bulk Assignment</span> to create assignments, and the staff mobile screen to track progress.
+        </p>
+      </div>
+    )
   }
 
   return (

@@ -34,33 +34,44 @@ export default function Dashboard({ user, lang = 'en' }) {
         maintenance: rooms?.filter(r => r.status === 'maintenance').length || 0,
       }
 
-      // Fetch tasks for today
+      // Fetch activity assignments for today (new flow)
       const today = new Date().toISOString().split('T')[0]
-      const { data: tasks, error: tasksError } = await supabase
-        .from('housekeeping_tasks')
-        .select('status')
+
+      let tasks = []
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('activity_assignments')
+        .select('status, created_at')
         .eq('org_id', user.org_id)
         .gte('created_at', today)
 
-      if (tasksError) throw tasksError
-
-      const taskStats = {
-        completed: tasks?.filter(t => t.status === 'completed').length || 0,
-        pending: tasks?.filter(t => ['pending', 'in_progress'].includes(t.status)).length || 0,
+      if (tasksError) {
+        console.warn('Dashboard: activity_assignments unavailable:', tasksError)
+      } else {
+        tasks = tasksData || []
       }
 
-      // Fetch service requests
-      const { data: requests, error: requestsError } = await supabase
+      const taskStats = {
+        completed: tasks.filter(t => t.status === 'completed').length,
+        pending: tasks.filter(t => ['pending', 'assigned', 'in_progress'].includes(t.status)).length,
+      }
+
+      // Fetch service requests (optional table in some installs)
+      let requests = []
+      const { data: requestsData, error: requestsError } = await supabase
         .from('service_requests')
         .select('status, priority')
         .eq('org_id', user.org_id)
         .in('status', ['pending', 'in_progress'])
 
-      if (requestsError) throw requestsError
+      if (requestsError) {
+        console.warn('Dashboard: service_requests unavailable:', requestsError)
+      } else {
+        requests = requestsData || []
+      }
 
       const requestStats = {
-        open: requests?.length || 0,
-        urgent: requests?.filter(r => r.priority === 'high').length || 0,
+        open: requests.length,
+        urgent: requests.filter(r => r.priority === 'high').length,
       }
 
       setStats({

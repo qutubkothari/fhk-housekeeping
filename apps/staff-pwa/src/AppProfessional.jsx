@@ -87,7 +87,12 @@ function App() {
     if (storedUser) {
       const userData = JSON.parse(storedUser)
       setUser(userData)
-      loadRooms(userData.id)
+      // Avoid legacy task loading for non-maintenance users in the unified app.
+      if (userData?.role === 'maintenance') {
+        loadRooms(userData.id)
+      } else {
+        setLoading(false)
+      }
       checkActiveSession(userData.id)
     } else {
       // Production: do NOT auto-login. Show the unified login screen.
@@ -101,7 +106,11 @@ function App() {
           org_id: 'c7b3d8e0-5d4e-4b5a-8f3c-9e6d5f4c3b2a'
         }
         setUser(testUser)
-        loadRooms(testUser.id)
+        if (testUser?.role === 'maintenance') {
+          loadRooms(testUser.id)
+        } else {
+          setLoading(false)
+        }
         checkActiveSession(testUser.id)
       }
     }
@@ -474,7 +483,6 @@ function App() {
     // Mobile users
     else if (user.role === 'supervisor') {
       loadStaffPerformance()
-      loadRooms(user.id)
       loadRoomStatus()
     }
   }, [user?.role])

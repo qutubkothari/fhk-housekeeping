@@ -10,6 +10,7 @@ export default function Housekeeping({ user, lang = 'en' }) {
   const [rooms, setRooms] = useState([])
   const [staff, setStaff] = useState([])
   const [loading, setLoading] = useState(true)
+  const [legacyTasksUnavailable, setLegacyTasksUnavailable] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [showAssignModal, setShowAssignModal] = useState(false)
@@ -48,7 +49,14 @@ export default function Housekeeping({ user, lang = 'en' }) {
         supabase.from('users').select('*').eq('org_id', user.org_id).in('role', ['staff', 'housekeeping', 'supervisor']).order('full_name')
       ])
 
-      setTasks(tasksRes.data || [])
+      if (tasksRes.error?.code === '42P01') {
+        setLegacyTasksUnavailable(true)
+        setTasks([])
+      } else {
+        setLegacyTasksUnavailable(false)
+        setTasks(tasksRes.data || [])
+      }
+
       setRooms(roomsRes.data || [])
       setStaff(staffRes.data || [])
     } catch (error) {
@@ -198,6 +206,21 @@ export default function Housekeeping({ user, lang = 'en' }) {
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div></div>
+  }
+
+  if (legacyTasksUnavailable) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('housekeeping')} {t('tasks')}</h1>
+        <p className="text-gray-600">
+          This installation uses the new activity-based workflow (room/activity assignments). The legacy table
+          <span className="font-semibold"> housekeeping_tasks</span> is not available.
+        </p>
+        <p className="text-gray-600 mt-3">
+          Use <span className="font-semibold">Bulk Assignment</span> to assign work and the staff mobile view to track completion.
+        </p>
+      </div>
+    )
   }
 
   return (
