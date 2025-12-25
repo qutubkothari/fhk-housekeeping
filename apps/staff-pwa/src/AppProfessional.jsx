@@ -470,7 +470,7 @@ function App() {
     if (!user) return
     
     // Set default page based on role
-    if (user.role === 'super_admin') {
+    if (user.role === 'admin' || user.role === 'super_admin') {
       if (!currentPage) setCurrentPage('dashboard')
     } else if (user.role === 'inventory') {
       if (!currentPage) setCurrentPage('inventory')
@@ -479,8 +479,8 @@ function App() {
     }
     
     // Desktop users - load initial data
-    if (['super_admin', 'inventory', 'laundry'].includes(user.role)) {
-      if (user.role === 'super_admin') {
+    if (['admin', 'super_admin', 'inventory', 'laundry'].includes(user.role)) {
+      if (user.role === 'admin' || user.role === 'super_admin') {
         loadRoomStatus()
         loadUsers()
         loadAnalytics()
@@ -702,29 +702,29 @@ function App() {
     </div>
   )
 
-  // Desktop Dashboard Layout for super_admin, inventory, laundry
-  if (['super_admin', 'inventory', 'laundry'].includes(user?.role)) {
+  // Desktop Dashboard Layout for admin, super_admin, inventory, laundry
+  if (['admin', 'super_admin', 'inventory', 'laundry'].includes(user?.role)) {
     // Define access control
     const hasAccess = (page) => {
       const accessRules = {
-        'dashboard': ['super_admin'],
-        'rooms': ['super_admin'],
-        'housekeeping': ['super_admin'],
-        'maintenance': ['super_admin'],
-        'staff': ['super_admin'],
-        'inventory': ['super_admin', 'inventory'],
-        'linen': ['super_admin', 'laundry'],
-        'reports': ['super_admin'],
-        'realtime': ['super_admin'],
-        'assignments': ['super_admin'],
-        'analytics': ['super_admin'],
-        'activity-master': ['super_admin'],
-        'bulk-assignment': ['super_admin'],
-        'location-master': ['super_admin'],
-        'shift-master': ['super_admin'],
-        'vendor-management': ['super_admin'],
-        'procurement': ['super_admin'],
-        'settings': ['super_admin'],
+        'dashboard': ['admin', 'super_admin'],
+        'rooms': ['admin', 'super_admin'],
+        'housekeeping': ['admin', 'super_admin'],
+        'maintenance': ['admin', 'super_admin'],
+        'staff': ['admin', 'super_admin'],
+        'inventory': ['admin', 'super_admin', 'inventory'],
+        'linen': ['admin', 'super_admin', 'laundry'],
+        'reports': ['admin', 'super_admin'],
+        'realtime': ['admin', 'super_admin'],
+        'assignments': ['admin', 'super_admin'],
+        'analytics': ['admin', 'super_admin'],
+        'activity-master': ['admin', 'super_admin'],
+        'bulk-assignment': ['admin', 'super_admin'],
+        'location-master': ['admin', 'super_admin'],
+        'shift-master': ['admin', 'super_admin'],
+        'vendor-management': ['admin', 'super_admin'],
+        'procurement': ['admin', 'super_admin'],
+        'settings': ['admin', 'super_admin'],
       }
       return accessRules[page]?.includes(user.role) || false
     }
