@@ -663,44 +663,39 @@ function App() {
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center mb-3">Demo Accounts (Desktop Dashboard Users):</p>
+            <p className="text-xs text-gray-500 text-center mb-3">Demo Mobile Numbers (Desktop Dashboard Users):</p>
             <div className="grid grid-cols-3 gap-2 text-xs mb-3">
               <div className="p-2 bg-indigo-50 rounded-lg">
                 <div className="font-semibold text-indigo-900">Super Admin</div>
-                <div className="text-indigo-600">admin@demohotel.com</div>
+                <div className="text-indigo-600">+966 50 123 4567</div>
                 <div className="text-indigo-500 text-[10px] mt-1">Full Access Dashboard</div>
               </div>
               <div className="p-2 bg-green-50 rounded-lg">
                 <div className="font-semibold text-green-900">Inventory</div>
-                <div className="text-green-600">inventory@demohotel.com</div>
+                <div className="text-green-600">+966 50 111 1111</div>
                 <div className="text-green-500 text-[10px] mt-1">Inventory Module</div>
               </div>
               <div className="p-2 bg-pink-50 rounded-lg">
                 <div className="font-semibold text-pink-900">Laundry</div>
-                <div className="text-pink-600">laundry@demohotel.com</div>
+                <div className="text-pink-600">+966 50 890 1234</div>
                 <div className="text-pink-500 text-[10px] mt-1">Linen Module</div>
               </div>
             </div>
-            <p className="text-xs text-gray-500 text-center mb-3 mt-4">Mobile Field Staff Users:</p>
+            <p className="text-xs text-gray-500 text-center mb-3 mt-4">Demo Mobile Numbers (Mobile Field Staff Users):</p>
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div className="p-2 bg-purple-50 rounded-lg">
                 <div className="font-semibold text-purple-900">Supervisor</div>
-                <div className="text-purple-600">supervisor@demohotel.com</div>
+                <div className="text-purple-600">+966 50 567 8901</div>
                 <div className="text-purple-500 text-[10px] mt-1">Mobile Manager</div>
               </div>
               <div className="p-2 bg-blue-50 rounded-lg">
                 <div className="font-semibold text-blue-900">Housekeeping</div>
-                <div className="text-blue-600">fatima@demohotel.com</div>
+                <div className="text-blue-600">+966 50 234 5678</div>
                 <div className="text-blue-500 text-[10px] mt-1">Mobile Tasks</div>
               </div>
               <div className="p-2 bg-orange-50 rounded-lg">
                 <div className="font-semibold text-orange-900">Maintenance</div>
-                <div className="text-orange-600">technician@demohotel.com</div>
-                <div className="text-orange-500 text-[10px] mt-1">Mobile Tech</div>
-              </div>
-              <div className="p-2 bg-orange-50 rounded-lg">
-                <div className="font-semibold text-orange-900">Maintenance</div>
-                <div className="text-orange-600">maintenance@demohotel.com</div>
+                <div className="text-orange-600">+966 50 678 9012</div>
                 <div className="text-orange-500 text-[10px] mt-1">Mobile Tech</div>
               </div>
             </div>
