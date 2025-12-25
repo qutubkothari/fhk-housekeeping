@@ -170,7 +170,8 @@ export default function Rooms({ user, lang = 'en' }) {
 
       // RFO rule: status can be set to 'vacant' only after all assigned activities are completed
       // We treat 'vacant' as Ready for Occupation (RFO).
-      if (modalMode === 'edit' && formData.status === 'vacant') {
+      // Only validate when CHANGING TO vacant status, not when already vacant
+      if (modalMode === 'edit' && formData.status === 'vacant' && selectedRoom?.status !== 'vacant') {
         const hasAssignment = Boolean(selectedRoom?.has_housekeeping_assignment)
         const isEligible = Boolean(selectedRoom?.rfo_eligible)
 

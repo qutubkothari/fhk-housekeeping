@@ -219,7 +219,7 @@ function App() {
       })
       console.log('✅ Work session created:', session)
 
-      const updateTable = isMaintenance ? 'service_requests' : 'housekeeping_tasks'
+      const updateTable = isMaintenance ? 'service_requests' : 'activity_assignments'
       await api(`${updateTable}?id=eq.${task.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -261,12 +261,13 @@ function App() {
     try {
       const isMaintenance = user?.role === 'maintenance'
       const taskId = isMaintenance ? activeSession.service_request_id : activeSession.task_id
-      const updateTable = isMaintenance ? 'service_requests' : 'housekeeping_tasks'
+      const updateTable = isMaintenance ? 'service_requests' : 'activity_assignments'
+      const issueColumn = isMaintenance ? 'identified_issues' : 'issues_reported'
       
       await api(`${updateTable}?id=eq.${taskId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          identified_issues: selectedIssues
+          [issueColumn]: selectedIssues
         })
       })
       setShowIssuesModal(false)
@@ -291,7 +292,7 @@ function App() {
       })
 
       const taskId = isMaintenance ? activeSession.service_request_id : activeSession.task_id
-      const updateTable = isMaintenance ? 'service_requests' : 'housekeeping_tasks'
+      const updateTable = isMaintenance ? 'service_requests' : 'activity_assignments'
       await api(`${updateTable}?id=eq.${taskId}`, {
         method: 'PATCH',
         body: JSON.stringify({

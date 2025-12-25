@@ -382,17 +382,15 @@ export default function Staff({ user, lang = 'en' }) {
           <p className="text-gray-600 text-lg">No staff members found</p>
         </div>
       )}
-
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-            <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-2xl">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-2xl sticky top-0">
               <h2 className="text-2xl font-bold">
                 {modalMode === 'add' ? 'Add Staff Member' : 'Edit Staff Member'}
               </h2>
             </div>
-
             <form onSubmit={handleSubmit} className="p-6">
               <div className="space-y-4">
                 <div>
