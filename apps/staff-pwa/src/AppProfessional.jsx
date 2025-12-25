@@ -90,17 +90,20 @@ function App() {
       loadRooms(userData.id)
       checkActiveSession(userData.id)
     } else {
-      // For local testing - use test user
-      const testUser = {
-        id: '30cefa4c-00c5-4305-9ffc-5442ad0b0a3a',
-        full_name: 'Fatima Ali',
-        email: 'fatima@demohotel.com',
-        role: 'staff',
-        org_id: 'c7b3d8e0-5d4e-4b5a-8f3c-9e6d5f4c3b2a'
+      // Production: do NOT auto-login. Show the unified login screen.
+      // Dev only: keep a convenience test user for local testing.
+      if (import.meta?.env?.DEV) {
+        const testUser = {
+          id: '30cefa4c-00c5-4305-9ffc-5442ad0b0a3a',
+          full_name: 'Fatima Ali',
+          email: 'fatima@demohotel.com',
+          role: 'staff',
+          org_id: 'c7b3d8e0-5d4e-4b5a-8f3c-9e6d5f4c3b2a'
+        }
+        setUser(testUser)
+        loadRooms(testUser.id)
+        checkActiveSession(testUser.id)
       }
-      setUser(testUser)
-      loadRooms(testUser.id)
-      checkActiveSession(testUser.id)
     }
   }, [])
 
