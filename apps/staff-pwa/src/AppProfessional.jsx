@@ -846,207 +846,50 @@ function App() {
 
       {/* Main Content */}
       <main className="px-4 py-6 pb-24">
-        {/* Staff & Maintenance - Rooms/Tasks View */}
-        {(user.role === 'staff' || user.role === 'maintenance') && page === 'rooms' && (
+        {/* Staff (Housekeeping) - New flow: activity-based assignments */}
+        {user.role === 'staff' && page === 'rooms' && (
           <div className="max-w-4xl mx-auto">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {user.role === 'maintenance' ? (lang === 'ar' ? 'مشاكلي' : 'My Issues') : (lang === 'ar' ? 'غرفي' : 'My Rooms')}
-              </h2>
-              <p className="text-gray-600">
-                {user.role === 'maintenance' ? (lang === 'ar' ? 'طلبات الصيانة المعينة' : 'Assigned maintenance requests') : (lang === 'ar' ? 'المهام المعينة لليوم' : 'Assigned tasks for today')}
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-500 border-t-transparent"></div>
-              </div>
-            ) : rooms.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-card p-12 text-center">
-                <CheckCircle2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">
-                  {user.role === 'maintenance' ? (lang === 'ar' ? 'لا توجد مشاكل معينة' : 'No issues assigned') : (lang === 'ar' ? 'لا توجد غرف معينة' : 'No rooms assigned')}
-                </p>
-                <p className="text-gray-400 text-sm mt-2">{lang === 'ar' ? 'تحقق لاحقاً للمهام الجديدة' : 'Check back later for new tasks'}</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {rooms.map(task => {
-                  const room = task.rooms
-                  const isMaintenance = user.role === 'maintenance'
-                  const activeTaskId = isMaintenance ? activeSession?.service_request_id : activeSession?.task_id
-                  const isActive = activeTaskId === task.id
-                  const canStart = !activeSession && (task.status === 'pending' || task.status === 'assigned')
-
-                  return (
-                    <div
-                      key={task.id}
-                      className={`bg-white rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all duration-200 ${
-                        isActive ? 'ring-2 ring-emerald-500 ring-offset-2' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-16 h-16 bg-gradient-to-br ${
-                            isMaintenance ? 'from-orange-500 to-orange-600' : 'from-primary-500 to-primary-600'
-                          } rounded-xl flex items-center justify-center shadow-lg`}>
-                            <span className="text-2xl font-bold text-white">{room.room_number}</span>
-                          </div>
-                          <div>
-                            <div className="text-lg font-semibold text-gray-900">{lang === 'ar' ? 'غرفة' : 'Room'} {room.room_number}</div>
-                            <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                              <span>{lang === 'ar' ? 'طابق' : 'Floor'} {room.floor}</span>
-                              <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                              {isMaintenance && task.category && (
-                                <>
-                                  <span className="text-orange-600 font-medium capitalize">{task.category}</span>
-                                  <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                </>
-                              )}
-                              <span className={`flex items-center gap-1 ${
-                                task.status === 'in_progress' ? 'text-emerald-600' : 'text-gray-600'
-                              }`}>
-                                {task.status === 'in_progress' ? (
-                                  <><Clock className="w-4 h-4" /> {t('inProgress')}</>
-                                ) : (
-                                  <><AlertCircle className="w-4 h-4" /> {t('pending')}</>
-                                )}
-                              </span>
-                            </div>
-                            {isMaintenance && task.description && (
-                              <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        {canStart && (
-                          <button
-                            onClick={() => startWork(task)}
-                            className={`bg-gradient-to-r ${
-                              isMaintenance 
-                                ? 'from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
-                                : 'from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800'
-                            } text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200`}
-                          >
-                            {lang === 'ar' ? 'بدء المهمة' : 'Start Task'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+            <ActivityTasks lang={lang} user={user} />
           </div>
         )}
 
-        {/* Supervisor Interface */}
+        {/* Maintenance - Show service requests list */}
+        {user.role === 'maintenance' && page === 'rooms' && (
+          <div className="max-w-4xl mx-auto">
+            <ServiceRequests user={user} lang={lang} />
+          </div>
+        )}
+
+        {/* Supervisor - Room assignments + Bulk Assignment */}
         {user.role === 'supervisor' && page === 'rooms' && (
           <div className="max-w-6xl mx-auto">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{lang === 'ar' ? 'لوحة تحكم المشرف' : 'Supervisor Dashboard'}</h2>
-              <p className="text-gray-600">{lang === 'ar' ? 'مراقبة الموظفين وإدارة المهام' : 'Monitor staff and manage tasks'}</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{lang === 'ar' ? 'المشرف' : 'Supervisor'}</h2>
+                <p className="text-gray-600">{lang === 'ar' ? 'تعيينات الغرف ونسبة الإنجاز' : 'Room assignments and completion'}</p>
+              </div>
+              <button
+                onClick={() => setPage('bulk-assignment')}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
+              >
+                {lang === 'ar' ? 'تعيين جماعي' : 'Bulk Assignment'}
+              </button>
             </div>
+            <Rooms user={user} lang={lang} />
+          </div>
+        )}
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="text-3xl font-bold">{performanceData.length}</div>
-                <div className="text-blue-100 text-sm mt-1">{lang === 'ar' ? 'موظفون نشطون' : 'Active Staff'}</div>
-              </div>
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="text-3xl font-bold">{rooms.filter(r => r.status === 'completed').length}</div>
-                <div className="text-emerald-100 text-sm mt-1">{lang === 'ar' ? 'مكتملة اليوم' : 'Completed Today'}</div>
-              </div>
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="text-3xl font-bold">{rooms.filter(r => r.status === 'in_progress').length}</div>
-                <div className="text-orange-100 text-sm mt-1">{t('inProgress')}</div>
-              </div>
-              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-                <div className="text-3xl font-bold">{rooms.filter(r => r.status === 'pending').length}</div>
-                <div className="text-purple-100 text-sm mt-1">{lang === 'ar' ? 'مهام معلقة' : 'Pending Tasks'}</div>
-              </div>
+        {user.role === 'supervisor' && page === 'bulk-assignment' && (
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-4">
+              <button
+                onClick={() => setPage('rooms')}
+                className="text-purple-700 font-semibold"
+              >
+                {lang === 'ar' ? 'رجوع' : 'Back'}
+              </button>
             </div>
-
-            {/* Staff Performance */}
-            <div className="bg-white rounded-2xl shadow-card p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">{lang === 'ar' ? 'أداء الموظفين' : 'Staff Performance'}</h3>
-                <button className="text-purple-600 hover:text-purple-700 font-semibold text-sm">{lang === 'ar' ? 'عرض التقارير' : 'View Reports'}</button>
-              </div>
-              <div className="space-y-3">
-                {performanceData.slice(0, 5).map(staff => (
-                  <button
-                    key={staff.id}
-                    onClick={() => {
-                      setSelectedStaff(staff)
-                      setShowStaffDetail(true)
-                    }}
-                    className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-purple-50 hover:border-purple-200 border-2 border-transparent transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {staff.full_name.charAt(0)}
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-gray-900">{staff.full_name}</div>
-                        <div className="text-sm text-gray-500 capitalize">{staff.role}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <div className="text-sm text-gray-500">Tasks</div>
-                        <div className="font-bold text-gray-900">{staff.tasksCompleted}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-gray-500">Avg Time</div>
-                        <div className="font-bold text-gray-900">{staff.avgTime}m</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-gray-500">Rating</div>
-                        <div className="font-bold text-emerald-600">{staff.rating}</div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* All Tasks Overview */}
-            <div className="bg-white rounded-2xl shadow-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">All Tasks</h3>
-                <button 
-                  onClick={() => setAssignTaskModal(true)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors"
-                >
-                  + Assign Task
-                </button>
-              </div>
-              <div className="space-y-2">
-                {rooms.slice(0, 10).map(task => (
-                  <div key={task.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Square className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <div className="font-medium text-gray-900">Room {task.rooms?.room_number}</div>
-                        <div className="text-sm text-gray-500">{task.title || 'Housekeeping'}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {task.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <BulkAssignment user={user} lang={lang} />
           </div>
         )}
 
