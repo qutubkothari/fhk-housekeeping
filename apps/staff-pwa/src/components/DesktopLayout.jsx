@@ -46,31 +46,31 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
   // Define menu items based on role
   const getMenu = () => {
     const allMenuItems = [
-      { id: 'dashboard', section: 'overview', label: lang === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, roles: ['super_admin'] },
+      { id: 'dashboard', section: 'overview', label: lang === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'super_admin'] },
 
-      { id: 'location-master', section: 'masters', label: lang === 'ar' ? 'إدارة المواقع' : 'Location Master', icon: MapPin, roles: ['super_admin'] },
-      { id: 'shift-master', section: 'masters', label: lang === 'ar' ? 'إدارة الورديات' : 'Shift Master', icon: Calendar, roles: ['super_admin'] },
-      { id: 'vendor-management', section: 'masters', label: lang === 'ar' ? 'إدارة الموردين' : 'Vendor Management', icon: Store, roles: ['super_admin'] },
-      { id: 'activity-master', section: 'masters', label: lang === 'ar' ? 'أنشطة التدبير' : 'Activity Master', icon: ClipboardList, roles: ['super_admin'] },
+      { id: 'location-master', section: 'masters', label: lang === 'ar' ? 'إدارة المواقع' : 'Location Master', icon: MapPin, roles: ['admin', 'super_admin'] },
+      { id: 'shift-master', section: 'masters', label: lang === 'ar' ? 'إدارة الورديات' : 'Shift Master', icon: Calendar, roles: ['admin', 'super_admin'] },
+      { id: 'vendor-management', section: 'masters', label: lang === 'ar' ? 'إدارة الموردين' : 'Vendor Management', icon: Store, roles: ['admin', 'super_admin'] },
+      { id: 'activity-master', section: 'masters', label: lang === 'ar' ? 'أنشطة التدبير' : 'Activity Master', icon: ClipboardList, roles: ['admin', 'super_admin'] },
 
-      { id: 'staff', section: 'staff', label: lang === 'ar' ? 'إدارة الموظفين' : 'Staff Management', icon: Users, roles: ['super_admin'] },
-      { id: 'assignments', section: 'staff', label: lang === 'ar' ? 'تعيينات الموظفين' : 'Staff Assignments', icon: Calendar, roles: ['super_admin'] },
+      { id: 'staff', section: 'staff', label: lang === 'ar' ? 'إدارة الموظفين' : 'Staff Management', icon: Users, roles: ['admin', 'super_admin'] },
+      { id: 'assignments', section: 'staff', label: lang === 'ar' ? 'تعيينات الموظفين' : 'Staff Assignments', icon: Calendar, roles: ['admin', 'super_admin'] },
 
-      { id: 'rooms', section: 'housekeeping', label: lang === 'ar' ? 'الغرف' : 'Rooms', icon: BedDouble, roles: ['super_admin'] },
-      { id: 'housekeeping', section: 'housekeeping', label: lang === 'ar' ? 'التدبير المنزلي' : 'Housekeeping', icon: ClipboardList, roles: ['super_admin'] },
-      { id: 'bulk-assignment', section: 'housekeeping', label: lang === 'ar' ? 'التعيين الجماعي' : 'Bulk Assignment', icon: Calendar, roles: ['super_admin'] },
-      { id: 'maintenance', section: 'housekeeping', label: t('maintenance'), icon: Wrench, roles: ['super_admin'] },
+      { id: 'rooms', section: 'housekeeping', label: lang === 'ar' ? 'الغرف' : 'Rooms', icon: BedDouble, roles: ['admin', 'super_admin'] },
+      { id: 'housekeeping', section: 'housekeeping', label: lang === 'ar' ? 'التدبير المنزلي' : 'Housekeeping', icon: ClipboardList, roles: ['admin', 'super_admin'] },
+      { id: 'bulk-assignment', section: 'housekeeping', label: lang === 'ar' ? 'التعيين الجماعي' : 'Bulk Assignment', icon: Calendar, roles: ['admin', 'super_admin'] },
+      { id: 'maintenance', section: 'housekeeping', label: t('maintenance'), icon: Wrench, roles: ['admin', 'super_admin'] },
 
-      { id: 'inventory', section: 'stores', label: lang === 'ar' ? 'المخزون' : 'Inventory', icon: Package, roles: ['super_admin', 'inventory'] },
-      { id: 'linen', section: 'stores', label: lang === 'ar' ? 'الغسيل والبياضات' : 'Linen & Laundry', icon: Shirt, roles: ['super_admin', 'laundry'] },
-      { id: 'procurement', section: 'stores', label: lang === 'ar' ? 'المشتريات' : 'Procurement', icon: Package, roles: ['super_admin'] },
+      { id: 'inventory', section: 'stores', label: lang === 'ar' ? 'المخزون' : 'Inventory', icon: Package, roles: ['admin', 'super_admin', 'inventory'] },
+      { id: 'linen', section: 'stores', label: lang === 'ar' ? 'الغسيل والبياضات' : 'Linen & Laundry', icon: Shirt, roles: ['admin', 'super_admin', 'laundry'] },
+      { id: 'procurement', section: 'stores', label: lang === 'ar' ? 'المشتريات' : 'Procurement', icon: Package, roles: ['admin', 'super_admin'] },
 
-      { id: 'realtime', section: 'monitoring', label: lang === 'ar' ? 'المراقبة الفورية' : 'Real-Time Monitor', icon: Monitor, roles: ['super_admin'] },
+      { id: 'realtime', section: 'monitoring', label: lang === 'ar' ? 'المراقبة الفورية' : 'Real-Time Monitor', icon: Monitor, roles: ['admin', 'super_admin'] },
 
-      { id: 'reports', section: 'reports', label: lang === 'ar' ? 'التقارير' : 'Reports', icon: FileText, roles: ['super_admin'] },
-      { id: 'analytics', section: 'reports', label: lang === 'ar' ? 'التحليلات' : 'Analytics', icon: BarChart3, roles: ['super_admin'] },
+      { id: 'reports', section: 'reports', label: lang === 'ar' ? 'التقارير' : 'Reports', icon: FileText, roles: ['admin', 'super_admin'] },
+      { id: 'analytics', section: 'reports', label: lang === 'ar' ? 'التحليلات' : 'Analytics', icon: BarChart3, roles: ['admin', 'super_admin'] },
 
-      { id: 'settings', section: 'system', label: lang === 'ar' ? 'الإعدادات' : 'Settings', icon: Settings, roles: ['super_admin'] },
+      { id: 'settings', section: 'system', label: lang === 'ar' ? 'الإعدادات' : 'Settings', icon: Settings, roles: ['admin', 'super_admin'] },
     ]
 
     const visibleItems = allMenuItems.filter(item => item.roles.includes(user.role))
