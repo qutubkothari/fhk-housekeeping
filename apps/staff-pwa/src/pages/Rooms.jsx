@@ -163,7 +163,8 @@ export default function Rooms({ user, lang = 'en' }) {
 
     try {
       // Validate required fields
-      if (!formData.room_number || !formData.floor) {
+      const floorMissing = formData.floor === '' || formData.floor === null || formData.floor === undefined
+      if (!formData.room_number || floorMissing) {
         alert('Please fill in all required fields')
         return
       }
