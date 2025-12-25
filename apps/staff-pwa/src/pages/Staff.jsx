@@ -154,10 +154,27 @@ export default function Staff({ user, lang = 'en' }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      const phoneDigits = String(formData.phone || '').replace(/\D/g, '')
+      if (!phoneDigits) {
+        alert('Mobile number is required')
+        return
+      }
+
+      // Keep compatibility with DBs where users.email is still NOT NULL.
+      const normalizedEmail = String(formData.email || '').trim()
+      const generatedEmail = `user_${phoneDigits}@fhk.local`
+
+      const payload = {
+        ...formData,
+        phone: phoneDigits,
+        phone_number: phoneDigits,
+        email: normalizedEmail || generatedEmail,
+      }
+
       if (modalMode === 'add') {
         const { data: inserted, error } = await supabase
           .from('users')
-          .insert([{ ...formData, org_id: user.org_id }])
+          .insert([{ ...payload, org_id: user.org_id }])
           .select('id')
           .single()
         if (error) throw error
@@ -166,7 +183,7 @@ export default function Staff({ user, lang = 'en' }) {
       } else {
         const { error } = await supabase
           .from('users')
-          .update(formData)
+          .update(payload)
           .eq('id', selectedStaff.id)
         if (error) throw error
         await saveOperationalActivities(selectedStaff.id)
@@ -216,7 +233,9 @@ export default function Staff({ user, lang = 'en' }) {
 
   const filteredStaff = staff.filter(member => {
     const matchesSearch = member.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                         member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         String(member.phone || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         String(member.phone_number || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRole = filterRole === 'all' || member.role === filterRole
     return matchesSearch && matchesRole
   })
@@ -405,22 +424,22 @@ export default function Staff({ user, lang = 'en' }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email (optional)</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
                     className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Mobile Number *</label>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    required
                     className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

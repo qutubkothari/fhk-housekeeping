@@ -142,6 +142,11 @@ function App() {
     return res.json()
   }
 
+  const normalizePhoneDigits = (value) => {
+    if (!value) return ''
+    return String(value).replace(/\D/g, '')
+  }
+
   const loadRooms = async (userId) => {
     try {
       console.log('🔍 loadRooms called with userId:', userId)
@@ -508,11 +513,11 @@ function App() {
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Mobile Number</label>
               <input
-                type="email"
-                id="login-email"
-                placeholder="your.email@hotel.com"
+                type="tel"
+                id="login-mobile"
+                placeholder="Enter mobile number"
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors"
               />
             </div>
@@ -529,107 +534,127 @@ function App() {
             </div>
 
             <button
-              onClick={() => {
-                const email = document.getElementById('login-email').value.toLowerCase().trim()
-                const password = document.getElementById('login-password').value
-                
-                if (!email) {
-                  alert('Please enter an email address')
+              onClick={async () => {
+                const mobileRaw = document.getElementById('login-mobile')?.value
+                const password = document.getElementById('login-password')?.value
+
+                const mobileDigits = normalizePhoneDigits(mobileRaw)
+                if (!mobileDigits) {
+                  alert('Please enter a mobile number')
                   return
                 }
                 if (!password) {
                   alert('Please enter a password')
                   return
                 }
-                
-                // Database users lookup
-                const testUsers = {
-                  'admin@demohotel.com': {
-                    id: '00000000-0000-0000-0000-000000000002',
-                    full_name: 'Admin User',
-                    email: 'admin@demohotel.com',
-                    role: 'super_admin',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'ahmed@demohotel.com': {
-                    id: '00000000-0000-0000-0000-000000000003',
-                    full_name: 'Ahmed Hassan',
-                    email: 'ahmed@demohotel.com',
-                    role: 'staff',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'fatima@demohotel.com': {
-                    id: '30cefa4c-00c5-4305-9ffc-5442ad0b0a3a',
-                    full_name: 'Fatima Ali',
-                    email: 'fatima@demohotel.com',
-                    role: 'staff',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'sara@demohotel.com': {
-                    id: '5ac38ad5-5ad3-4b59-b8dd-94c1f1f2e9c0',
-                    full_name: 'Sara Abdullah',
-                    email: 'sara@demohotel.com',
-                    role: 'staff',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'laundry@demohotel.com': {
-                    id: '746b68a7-7247-4f6e-8825-c4cf297be2fc',
-                    full_name: 'Mariam Ahmed',
-                    email: 'laundry@demohotel.com',
-                    role: 'laundry',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'supervisor@demohotel.com': {
-                    id: '7510deff-26e3-4578-8a41-90cd477222c7',
-                    full_name: 'Khalid Al-Rashid',
-                    email: 'supervisor@demohotel.com',
-                    role: 'supervisor',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'mohammed@demohotel.com': {
-                    id: '79c6e723-706e-48ce-8dac-f81d7a6e83d5',
-                    full_name: 'Mohammed Ibrahim',
-                    email: 'mohammed@demohotel.com',
-                    role: 'staff',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'maintenance@demohotel.com': {
-                    id: 'f04c4e03-182a-413f-9295-fbe6014b2830',
-                    full_name: 'Ali Hassan',
-                    email: 'maintenance@demohotel.com',
-                    role: 'maintenance',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'technician@demohotel.com': {
-                    id: 'f31b7fd5-1497-4f9d-9ccc-a02f8fbaeffc',
-                    full_name: 'Omar Khalil',
-                    email: 'technician@demohotel.com',
-                    role: 'maintenance',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  },
-                  'inventory@demohotel.com': {
+
+                // 1) Preferred: Database lookup by phone (normalized client-side)
+                try {
+                  const candidates = await api(
+                    'users?select=id,org_id,full_name,full_name_ar,role,email,phone,phone_number,is_active&is_active=eq.true&limit=5000'
+                  )
+                  const matched = (candidates || []).find((u) => {
+                    const phoneDigits = normalizePhoneDigits(u?.phone)
+                    const phoneNumberDigits = normalizePhoneDigits(u?.phone_number)
+                    return phoneDigits === mobileDigits || phoneNumberDigits === mobileDigits
+                  })
+
+                  if (matched) {
+                    const loginUser = {
+                      id: matched.id,
+                      full_name: matched.full_name,
+                      email: matched.email,
+                      phone: matched.phone || matched.phone_number,
+                      role: matched.role,
+                      org_id: matched.org_id,
+                    }
+                    localStorage.setItem('fhk_user', JSON.stringify(loginUser))
+                    localStorage.removeItem('fhk_signed_out')
+                    window.location.reload()
+                    return
+                  }
+                } catch (err) {
+                  console.warn('Phone login DB lookup failed; falling back to demo users:', err?.message || err)
+                }
+
+                // 2) Fallback: demo users keyed by mobile digits
+                const demoUsersByMobile = {
+                  // NOTE: digits-only; spaces/+ are ignored during matching
+                  '966501111111': {
                     id: 'inv-user-001',
                     full_name: 'Hassan Inventory',
                     email: 'inventory@demohotel.com',
+                    phone: '+966 50 111 1111',
                     role: 'inventory',
-                    org_id: '00000000-0000-0000-0000-000000000001'
-                  }
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
+                  '966508901234': {
+                    id: '746b68a7-7247-4f6e-8825-c4cf297be2fc',
+                    full_name: 'Mariam Ahmed',
+                    email: 'laundry@demohotel.com',
+                    phone: '+966 50 890 1234',
+                    role: 'laundry',
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
+                  '966506789012': {
+                    id: 'f04c4e03-182a-413f-9295-fbe6014b2830',
+                    full_name: 'Ali Hassan',
+                    email: 'maintenance@demohotel.com',
+                    phone: '+966 50 678 9012',
+                    role: 'maintenance',
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
+                  '966505678901': {
+                    id: '7510deff-26e3-4578-8a41-90cd477222c7',
+                    full_name: 'Khalid Al-Rashid',
+                    email: 'supervisor@demohotel.com',
+                    phone: '+966 50 567 8901',
+                    role: 'supervisor',
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
+                  '966502345678': {
+                    id: '30cefa4c-00c5-4305-9ffc-5442ad0b0a3a',
+                    full_name: 'Fatima Ali',
+                    email: 'fatima@demohotel.com',
+                    phone: '+966 50 234 5678',
+                    role: 'staff',
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
+                  '966503456789': {
+                    id: '00000000-0000-0000-0000-000000000003',
+                    full_name: 'Ahmed Hassan',
+                    email: 'ahmed@demohotel.com',
+                    phone: '+966 50 345 6789',
+                    role: 'staff',
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
+                  '966504567890': {
+                    id: '5ac38ad5-5ad3-4b59-b8dd-94c1f1f2e9c0',
+                    full_name: 'Sara Abdullah',
+                    email: 'sara@demohotel.com',
+                    phone: '+966 50 456 7890',
+                    role: 'staff',
+                    org_id: '00000000-0000-0000-0000-000000000001',
+                  },
                 }
 
-                const user = testUsers[email]
-                if (user) {
-                  localStorage.setItem('fhk_user', JSON.stringify(user))
+                const demoUser = demoUsersByMobile[mobileDigits]
+                if (demoUser) {
+                  localStorage.setItem('fhk_user', JSON.stringify(demoUser))
                   localStorage.removeItem('fhk_signed_out')
                   window.location.reload()
-                } else {
-                  alert('Invalid credentials. Available emails:\n' +
-                    'admin@demohotel.com\n' +
-                    'supervisor@demohotel.com\n' +
-                    'fatima@demohotel.com (staff)\n' +
-                    'ahmed@demohotel.com (staff)\n' +
-                    'technician@demohotel.com (maintenance)\n' +
-                    'maintenance@demohotel.com (maintenance)')
+                  return
                 }
+
+                alert(
+                  'Invalid credentials. Try one of these mobile numbers:\n' +
+                    '+966 50 567 8901 (Supervisor)\n' +
+                    '+966 50 234 5678 (Staff)\n' +
+                    '+966 50 345 6789 (Staff)\n' +
+                    '+966 50 678 9012 (Maintenance)\n' +
+                    '+966 50 890 1234 (Laundry)\n' +
+                    '+966 50 111 1111 (Inventory)'
+                )
               }}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 text-lg"
             >
