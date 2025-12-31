@@ -429,7 +429,8 @@ export default function Linen({ user, lang = 'en' }) {
           </div>
         ))}
       </div>
-& View Toggle */}
+
+      {/* Search & View Toggle */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex gap-4">
           <div className="flex-1 relative">
@@ -474,8 +475,7 @@ export default function Linen({ user, lang = 'en' }) {
             className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
           >
             <RefreshCw className="w-5 h-5" />
-            <span className="hidden sm:inline">Refresh</span>hCw className="w-5 h-5" />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
