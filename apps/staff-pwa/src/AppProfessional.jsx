@@ -314,8 +314,9 @@ function App() {
       await api(`${updateTable}?id=eq.${taskId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          status: 'completed',
-          completed_at: now
+          status: isMaintenance ? 'resolved' : 'completed',
+          completed_at: now,
+          ...(isMaintenance && { resolved_at: now })
         })
       })
 
