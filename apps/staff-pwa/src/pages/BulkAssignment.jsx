@@ -236,12 +236,6 @@ export default function BulkAssignment({ user, lang = 'en' }) {
       alert('Error cancelling assignment: ' + error.message)
     }
   }
-      
-    } catch (error) {
-      console.error('Error creating assignments:', error)
-      alert(t('error') + ': ' + error.message)
-    }
-  }
 
   if (loading) {
     return <div className="text-center py-12">{t('loading')}</div>
