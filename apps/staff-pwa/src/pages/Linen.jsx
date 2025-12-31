@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Search, Shirt, Package, TrendingUp, TrendingDown, RefreshCw, Plus, X, ArrowRight, Recycle, Loader, CheckCircle, AlertTriangle, Clock, Edit2, Trash2 } from 'lucide-react'
+import { Search, Shirt, Package, TrendingUp, TrendingDown, RefreshCw, Plus, X, ArrowRight, Recycle, Loader, CheckCircle, AlertTriangle, Clock, Edit2, Trash2, Grid, List } from 'lucide-react'
 import Select from 'react-select'
 import { translations } from '../translations'
 
@@ -12,6 +12,7 @@ export default function Linen({ user, lang = 'en' }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeTab, setActiveTab] = useState('items')
+  const [viewMode, setViewMode] = useState('cards') // 'cards' or 'table'
   const [rooms, setRooms] = useState([])
   const [transactions, setTransactions] = useState([])
   const [showAddModal, setShowAddModal] = useState(false)
@@ -428,8 +429,7 @@ export default function Linen({ user, lang = 'en' }) {
           </div>
         ))}
       </div>
-
-      {/* Filters */}
+& View Toggle */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex gap-4">
           <div className="flex-1 relative">
@@ -442,72 +442,201 @@ export default function Linen({ user, lang = 'en' }) {
               className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
+          
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => fetchLinens()}
+            onClick={() => loadData()}
             className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
           >
             <RefreshCw className="w-5 h-5" />
+            <span className="hidden sm:inline">Refresh</span>hCw className="w-5 h-5" />
             Refresh
           </button>
         </div>
       </div>
 
-      {/* Linen Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredLinens.map(item => (
-          <div key={item.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all p-6 border border-gray-100">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg">
-                  <Shirt className="w-6 h-6 text-white" />
+      {/* Linen Grid or Table View */}
+      {viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLinens.map(item => (
+            <div key={item.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all p-6 border border-gray-100">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg">
+                    <Shirt className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{item.item_name_en}</h3>
+                    <p className="text-sm text-gray-500">{item.linen_type} • {item.size}</p>
+                    <p className="text-sm text-gray-500">Total: {item.total_stock || 0}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{item.item_name_en}</h3>
-                  <p className="text-sm text-gray-500">{item.linen_type} • {item.size}</p>
-                  <p className="text-sm text-gray-500">Total: {item.total_stock || 0}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(item)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Edit"
-                >
-                  <Edit2 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleDelete(item)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
-                <span className="text-sm font-medium text-green-800">Clean</span>
-                <span className="text-xl font-bold text-green-700">{item.clean_stock || 0}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                  <span className="text-sm font-medium text-green-800">Clean</span>
+                  <span className="text-xl font-bold text-green-700">{item.clean_stock || 0}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
+                  <span className="text-sm font-medium text-yellow-800">Soiled</span>
+                  <span className="text-xl font-bold text-yellow-700">{item.soiled_stock || 0}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                  <span className="text-sm font-medium text-blue-800">In Laundry</span>
+                  <span className="text-xl font-bold text-blue-700">{item.in_laundry || 0}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
-                <span className="text-sm font-medium text-yellow-800">Soiled</span>
-                <span className="text-xl font-bold text-yellow-700">{item.soiled_stock || 0}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                <span className="text-sm font-medium text-blue-800">In Laundry</span>
-                <span className="text-xl font-bold text-blue-700">{item.in_laundry || 0}</span>
-              </div>
-            </div>
 
-            {item.notes && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500">{item.notes}</p>
-              </div>
-            )}
+              {item.notes && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">{item.notes}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Table View */
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gradient-to-r from-pink-600 to-pink-700">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    Item Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    Size
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                    Clean
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                    Soiled
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                    In Laundry
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredLinens.map((item, index) => (
+                  <tr key={item.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-pink-50 transition-colors`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-pink-100 to-purple-100 rounded-lg">
+                          <Shirt className="w-5 h-5 text-pink-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{item.item_name_en}</div>
+                          {item.item_name_ar && (
+                            <div className="text-sm text-gray-500">{item.item_name_ar}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 capitalize">
+                        {item.linen_type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-700 capitalize">{item.size}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-green-100 text-green-800 font-semibold text-sm">
+                        {item.clean_stock || 0}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-yellow-100 text-yellow-800 font-semibold text-sm">
+                        {item.soiled_stock || 0}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-100 text-blue-800 font-semibold text-sm">
+                        {item.in_laundry || 0}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className="text-lg font-bold text-gray-900">{item.total_stock || 0}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {filteredLinens.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl shadow-lg">

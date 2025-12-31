@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Calendar, Users, Clock, CheckCircle, XCircle, Search, Filter, Plus } from 'lucide-react'
+import { Calendar, Users, Clock, CheckCircle, XCircle, Search, Filter, Plus, Edit2, Trash2, X } from 'lucide-react'
 import Select from 'react-select'
 import { customSelectStyles } from '../utils/selectStyles'
 
@@ -12,6 +12,68 @@ export default function StaffAssignments({ user }) {
   const [legacyAssignmentsUnavailable, setLegacyAssignmentsUnavailable] = useState(false)
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0])
   const [filterStaff, setFilterStaff] = useState('all')
+
+  const handleDeleteActivityAssignment = async (assignmentId) => {
+    if (!confirm('Are you sure you want to delete this activity assignment?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('activity_assignments')
+        .delete()
+        .eq('id', assignmentId)
+
+      if (error) throw error
+
+      alert('Activity assignment deleted successfully')
+      loadData()
+    } catch (error) {
+      console.error('Error deleting assignment:', error)
+      alert('Error deleting assignment: ' + error.message)
+    }
+  }
+
+  const handleCancelActivityAssignment = async (assignmentId) => {
+    if (!confirm('Are you sure you want to cancel this activity assignment?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('activity_assignments')
+        .update({ status: 'cancelled' })
+        .eq('id', assignmentId)
+
+      if (error) throw error
+
+      alert('Activity assignment cancelled successfully')
+      loadData()
+    } catch (error) {
+      console.error('Error cancelling assignment:', error)
+      alert('Error cancelling assignment: ' + error.message)
+    }
+  }
+
+  const handleReassignActivity = async (assignmentId, currentStaffId) => {
+    const newStaffId = prompt('Enter new staff ID (or select from dropdown in updated version):')
+    if (!newStaffId) return
+
+    try {
+      const { error } = await supabase
+        .from('activity_assignments')
+        .update({ assigned_to: newStaffId })
+        .eq('id', assignmentId)
+
+      if (error) throw error
+
+      alert('Activity reassigned successfully')
+      loadData()
+    } catch (error) {
+      console.error('Error reassigning:', error)
+      alert('Error reassigning: ' + error.message)
+    }
+  }
 
   useEffect(() => {
     if (user?.org_id) {
@@ -287,7 +349,7 @@ export default function StaffAssignments({ user }) {
                   {staffAssignments.map(assignment => (
                     <div key={assignment.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-colors">
                       <div className="flex items-start justify-between mb-3">
-                        <div>
+                        <div className="flex-1">
                           <h4 className="font-bold text-lg text-gray-900">
                             Room {assignment.rooms?.room_number}
                           </h4>
@@ -298,12 +360,14 @@ export default function StaffAssignments({ user }) {
                             </p>
                           )}
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold border capitalize ${getStatusColor(assignment.status)}`}>
-                          {assignment.status.replace('_', ' ')}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold border capitalize ${getStatusColor(assignment.status)}`}>
+                            {assignment.status.replace('_', ' ')}
+                          </span>
+                        </div>
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="space-y-2 mb-3">
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-gray-600">Type:</span>
                           <span className="text-gray-900 font-semibold">
@@ -315,6 +379,47 @@ export default function StaffAssignments({ user }) {
                           <span className="text-gray-900 font-semibold">{assignment.completion_percentage || 0}%</span>
                         </div>
                       </div>
+
+                      {/* Action Buttons */}
+                      {assignment.status === 'pending' && (
+                        <div className="flex gap-2 pt-3 border-t border-gray-200">
+                          <button
+                            onClick={() => handleReassignActivity(assignment.id, assignment.assigned_to)}
+                            className="flex-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+                            title="Reassign"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Reassign
+                          </button>
+                          <button
+                            onClick={() => handleCancelActivityAssignment(assignment.id)}
+                            className="flex-1 px-3 py-1.5 text-sm bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+                            title="Cancel"
+                          >
+                            <X className="w-3 h-3" />
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleDeleteActivityAssignment(assignment.id)}
+                            className="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                      {assignment.status !== 'pending' && (
+                        <div className="flex gap-2 pt-3 border-t border-gray-200">
+                          <button
+                            onClick={() => handleDeleteActivityAssignment(assignment.id)}
+                            className="w-full px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete Assignment
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

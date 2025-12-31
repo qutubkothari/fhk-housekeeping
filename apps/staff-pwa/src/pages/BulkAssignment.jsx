@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabaseClient'
 import { translations } from '../translations'
 import { 
   CheckSquare, Square, Users, Clock, Calendar, 
-  Save, X, Home, Activity, User, ChevronRight 
+  Save, X, Home, Activity, User, ChevronRight,
+  Edit2, Trash2, Eye, List, Plus 
 } from 'lucide-react'
 
 export default function BulkAssignment({ user, lang = 'en' }) {
@@ -11,10 +12,12 @@ export default function BulkAssignment({ user, lang = 'en' }) {
   const orgId = user?.org_id
 
   const [step, setStep] = useState(1) // 1: Select Rooms, 2: Select Activities, 3: Assign Staff, 4: Review
+  const [viewMode, setViewMode] = useState('create') // 'create' or 'manage'
   const [rooms, setRooms] = useState([])
   const [activities, setActivities] = useState([])
   const [staff, setStaff] = useState([])
   const [shifts, setShifts] = useState([])
+  const [existingAssignments, setExistingAssignments] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Selection state
@@ -30,7 +33,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
 
   useEffect(() => {
     fetchData()
-  }, [orgId])
+  }, [orgId, viewMode])
 
   const fetchData = async () => {
     setLoading(true)
@@ -65,6 +68,33 @@ export default function BulkAssignment({ user, lang = 'en' }) {
       setActivities(activitiesRes.data || [])
       setStaff(staffRes.data || [])
       setShifts(shiftsRes.data || [])
+
+      // Fetch existing assignments for manage view
+      if (viewMode === 'manage') {
+        const { data: assignmentsData, error } = await supabase
+          .from('room_assignments')
+          .select(`
+            *,
+            rooms(room_number, floor, room_type),
+            shifts(name, start_time, end_time),
+            activity_assignments(
+              id,
+              activity_id,
+              assigned_to,
+              status,
+              housekeeping_activities(name),
+              users:assigned_to(full_name)
+            )
+          `)
+          .eq('org_id', orgId)
+          .gte('assignment_date', new Date().toISOString().split('T')[0])
+          .order('created_at', { ascending: false })
+          .limit(50)
+
+        if (!error) {
+          setExistingAssignments(assignmentsData || [])
+        }
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -150,6 +180,62 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         notes: ''
       })
       setStep(1)
+      setViewMode('manage') // Switch to manage view after creation
+      fetchData()
+    } catch (error) {
+      console.error('Error creating assignments:', error)
+      alert('Error creating assignments: ' + error.message)
+    }
+  }
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    if (!confirm('Are you sure you want to delete this assignment? All related activity assignments will also be deleted.')) {
+      return
+    }
+
+    try {
+      // Delete activity assignments first
+      await supabase
+        .from('activity_assignments')
+        .delete()
+        .eq('room_assignment_id', assignmentId)
+
+      // Delete room assignment
+      const { error } = await supabase
+        .from('room_assignments')
+        .delete()
+        .eq('id', assignmentId)
+
+      if (error) throw error
+
+      alert('Assignment deleted successfully')
+      fetchData()
+    } catch (error) {
+      console.error('Error deleting assignment:', error)
+      alert('Error deleting assignment: ' + error.message)
+    }
+  }
+
+  const handleCancelAssignment = async (assignmentId) => {
+    if (!confirm('Are you sure you want to cancel this assignment?')) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('room_assignments')
+        .update({ status: 'cancelled' })
+        .eq('id', assignmentId)
+
+      if (error) throw error
+
+      alert('Assignment cancelled successfully')
+      fetchData()
+    } catch (error) {
+      console.error('Error cancelling assignment:', error)
+      alert('Error cancelling assignment: ' + error.message)
+    }
+  }
       
     } catch (error) {
       console.error('Error creating assignments:', error)
@@ -163,30 +249,166 @@ export default function BulkAssignment({ user, lang = 'en' }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{t('bulkAssignment')}</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          {t('assignRooms')} - Step {step}/4
-        </p>
+      {/* Header with View Mode Toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t('bulkAssignment')}</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {viewMode === 'create' ? `${t('assignRooms')} - Step ${step}/4` : 'Manage existing assignments'}
+          </p>
+        </div>
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => { setViewMode('create'); setStep(1); }}
+            className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+              viewMode === 'create'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            Create New
+          </button>
+          <button
+            onClick={() => setViewMode('manage')}
+            className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+              viewMode === 'manage'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            Manage Existing
+          </button>
+        </div>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center gap-4">
-        {[1, 2, 3, 4].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
-              {s}
-            </div>
-            {s < 4 && <ChevronRight className="w-5 h-5 text-gray-400" />}
+      {/* Manage Existing Assignments View */}
+      {viewMode === 'manage' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h2 className="text-lg font-semibold mb-4">Existing Assignments</h2>
+            
+            {existingAssignments.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No assignments found</p>
+                <p className="text-sm text-gray-500 mt-1">Create new assignments to get started</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {existingAssignments.map(assignment => (
+                  <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Home className="w-5 h-5 text-blue-600" />
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            Room {assignment.rooms?.room_number}
+                          </h3>
+                          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                            assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            assignment.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                            assignment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {assignment.status}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                          <div>
+                            <span className="font-medium">Type:</span> {assignment.assignment_type?.replace(/_/g, ' ')}
+                          </div>
+                          <div>
+                            <span className="font-medium">Date:</span> {new Date(assignment.assignment_date).toLocaleDateString()}
+                          </div>
+                          {assignment.shifts && (
+                            <div>
+                              <span className="font-medium">Shift:</span> {assignment.shifts.name}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-medium">Completion:</span> {assignment.completion_percentage || 0}%
+                          </div>
+                        </div>
+
+                        {assignment.activity_assignments && assignment.activity_assignments.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-sm font-medium text-gray-700 mb-2">Activities ({assignment.activity_assignments.length}):</p>
+                            <div className="flex flex-wrap gap-2">
+                              {assignment.activity_assignments.map(aa => (
+                                <div key={aa.id} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-sm">
+                                  <Activity className="w-4 h-4 text-gray-400" />
+                                  <span>{aa.housekeeping_activities?.name}</span>
+                                  <span className="text-gray-400">→</span>
+                                  <User className="w-4 h-4 text-blue-500" />
+                                  <span className="font-medium">{aa.users?.full_name}</span>
+                                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                                    aa.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                    aa.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {aa.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {assignment.notes && (
+                          <div className="mt-2 text-sm text-gray-600 italic">
+                            Note: {assignment.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 ml-4">
+                        {assignment.status === 'pending' && (
+                          <button
+                            onClick={() => handleCancelAssignment(assignment.id)}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Cancel Assignment"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteAssignment(assignment.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Assignment"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* Step 1: Select Rooms */}
-      {step === 1 && (
+      {/* Progress Steps - Only show in create mode */}
+      {viewMode === 'create' && (
+        <div className="flex items-center gap-4">
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {s}
+              </div>
+              {s < 4 && <ChevronRight className="w-5 h-5 text-gray-400" />}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Step 1: Select Rooms - Only show in create mode */}
+      {viewMode === 'create' && step === 1 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{t('selectRooms')}</h2>
@@ -240,8 +462,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         </div>
       )}
 
-      {/* Step 2: Select Activities */}
-      {step === 2 && (
+      {/* Step 2: Select Activities - Only show in create mode */}
+      {viewMode === 'create' && step === 2 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{t('selectActivities')}</h2>
@@ -313,8 +535,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         </div>
       )}
 
-      {/* Step 3: Assign Staff & Details */}
-      {step === 3 && (
+      {/* Step 3: Assign Staff & Details - Only show in create mode */}
+      {viewMode === 'create' && step === 3 && (
         <div className="space-y-6">
           <h2 className="text-lg font-semibold">{t('assignToStaff')}</h2>
 
@@ -424,8 +646,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         </div>
       )}
 
-      {/* Step 4: Review & Submit */}
-      {step === 4 && (
+      {/* Step 4: Review & Submit - Only show in create mode */}
+      {viewMode === 'create' && step === 4 && (
         <div className="space-y-6">
           <h2 className="text-lg font-semibold">{t('review')}</h2>
 
