@@ -38,6 +38,9 @@ export default function Linen({ user, lang = 'en' }) {
     room_id: '',
     notes: ''
   })
+  const [bulkReturnMode, setBulkReturnMode] = useState(false)
+  const [bulkReturnItems, setBulkReturnItems] = useState([])
+  const [selectedRoom, setSelectedRoom] = useState(null)
 
   useEffect(() => {
     console.log('🟣 Linen v3.0 - WITH TRANSACTIONS')
@@ -214,6 +217,118 @@ export default function Linen({ user, lang = 'en' }) {
     } catch (error) {
       console.error('Error:', error)
       alert('Failed to delete linen item')
+    }
+  }
+
+  const handleRoomSelect = (roomId) => {
+    setSelectedRoom(roomId)
+    // Initialize bulk return items with all linen items
+    const items = linens.map(linen => ({
+      id: linen.id,
+      name: linen.item_name_en,
+      nameAr: linen.item_name_ar,
+      type: linen.linen_type,
+      size: linen.size,
+      quantity: 0,
+      cleanStock: linen.clean_stock,
+      soiledStock: linen.soiled_stock
+    }))
+    setBulkReturnItems(items)
+  }
+
+  const updateBulkItemQuantity = (itemId, quantity) => {
+    setBulkReturnItems(prev => 
+      prev.map(item => 
+        item.id === itemId ? { ...item, quantity: parseInt(quantity) || 0 } : item
+      )
+    )
+  }
+
+  const handleBulkReturn = async (e) => {
+    e.preventDefault()
+    
+    // Filter items with quantity > 0
+    const itemsToReturn = bulkReturnItems.filter(item => item.quantity > 0)
+    
+    if (itemsToReturn.length === 0) {
+      alert('Please enter quantities for at least one linen item')
+      return
+    }
+    
+    if (!selectedRoom) {
+      alert('Please select a room')
+      return
+    }
+
+    try {
+      // Process each item
+      for (const item of itemsToReturn) {
+        const linen = linens.find(l => l.id === item.id)
+        if (!linen) continue
+
+        const quantity = item.quantity
+        let newClean = linen.clean_stock
+        let newSoiled = linen.soiled_stock
+        let newLaundry = linen.in_laundry
+
+        // Return soiled: move from clean to soiled
+        if (newClean >= quantity) {
+          newClean -= quantity
+          newSoiled += quantity
+        } else {
+          alert(`Not enough clean stock for ${linen.item_name_en}`)
+          continue
+        }
+
+        const newTotal = newClean + newSoiled + newLaundry
+
+        // Insert transaction
+        const { error: transError } = await supabase
+          .from('linen_transactions')
+          .insert([{
+            org_id: user.org_id,
+            linen_id: item.id,
+            transaction_type: 'return_soiled',
+            quantity: quantity,
+            room_id: selectedRoom,
+            notes: transactionData.notes,
+            created_by: user.id
+          }])
+
+        if (transError) throw transError
+
+        // Update item stock
+        const { error: updateError } = await supabase
+          .from('linen_items')
+          .update({
+            clean_stock: newClean,
+            soiled_stock: newSoiled,
+            in_laundry: newLaundry,
+            total_stock: newTotal
+          })
+          .eq('id', item.id)
+
+        if (updateError) throw updateError
+      }
+
+      // Reset form
+      setBulkReturnMode(false)
+      setShowTransactionModal(false)
+      setSelectedRoom(null)
+      setBulkReturnItems([])
+      setTransactionData({
+        linen_id: '',
+        transaction_type: 'issue_clean',
+        quantity: 0,
+        room_id: '',
+        notes: ''
+      })
+      
+      loadData()
+      alert(`Successfully returned ${itemsToReturn.length} linen items as soiled`)
+    } catch (error) {
+      console.error('Error processing bulk return:', error)
+      alert('Failed to process bulk return: ' + error.message)
     }
   }
 
@@ -1116,7 +1231,15 @@ export default function Linen({ user, lang = 'en' }) {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Transaction Type *</label>
                 <Select
                   value={transactionTypes.find(t => t.value === transactionData.transaction_type)}
-                  onChange={(option) => setTransactionData({ ...transactionData, transaction_type: option?.value || '' })}
+                  onChange={(option) => {
+                    setTransactionData({ ...transactionData, transaction_type: option?.value || '' })
+                    // Enable bulk return mode for return_soiled if user is staff
+                    if (option?.value === 'return_soiled' && user?.role === 'staff') {
+                      setBulkReturnMode(true)
+                    } else {
+                      setBulkReturnMode(false)
+                    }
+                  }}
                   options={transactionTypes.map(type => ({ value: type.value, label: type.label }))}
                   placeholder="Select transaction type"
                   isClearable
@@ -1138,6 +1261,109 @@ export default function Linen({ user, lang = 'en' }) {
                 />
               </div>
 
+              {/* Bulk Return Mode - Room Selection & Multiple Items */}
+              {bulkReturnMode && transactionData.transaction_type === 'return_soiled' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Room *</label>
+                    <Select
+                      value={rooms.find(r => r.id === selectedRoom) ? {
+                        value: selectedRoom,
+                        label: `${rooms.find(r => r.id === selectedRoom).room_number} - ${rooms.find(r => r.id === selectedRoom).room_type}`
+                      } : null}
+                      onChange={(option) => handleRoomSelect(option?.value || '')}
+                      options={rooms.map(room => ({
+                        value: room.id,
+                        label: `${room.room_number} - ${room.room_type} (Floor ${room.floor})`
+                      }))}
+                      placeholder="Select room..."
+                      isClearable
+                      isSearchable
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          minHeight: '42px',
+                          borderRadius: '0.5rem',
+                          borderWidth: '2px',
+                          borderColor: '#e5e7eb',
+                          '&:hover': { borderColor: '#ec4899' },
+                          '&:focus': { borderColor: '#ec4899', boxShadow: '0 0 0 1px #ec4899' }
+                        })
+                      }}
+                      required
+                    />
+                  </div>
+
+                  {selectedRoom && bulkReturnItems.length > 0 && (
+                    <div>
+                      <label className=\"block text-sm font-semibold text-gray-700 mb-3\">Linen Items - Enter Soiled Quantities</label>
+                      <div className=\"max-h-96 overflow-y-auto border-2 border-gray-200 rounded-lg\">
+                        <table className=\"w-full\">
+                          <thead className=\"bg-gray-50 sticky top-0\">
+                            <tr>
+                              <th className=\"px-4 py-3 text-left text-xs font-bold text-gray-700\">Item</th>
+                              <th className=\"px-4 py-3 text-left text-xs font-bold text-gray-700\">Type / Size</th>
+                              <th className=\"px-4 py-3 text-center text-xs font-bold text-gray-700\">Clean Stock</th>
+                              <th className=\"px-4 py-3 text-center text-xs font-bold text-gray-700\">Soiled Qty</th>
+                            </tr>
+                          </thead>
+                          <tbody className=\"divide-y divide-gray-200\">
+                            {bulkReturnItems.map(item => (
+                              <tr key={item.id} className=\"hover:bg-gray-50\">
+                                <td className=\"px-4 py-3\">
+                                  <div className=\"text-sm font-medium text-gray-900\">{item.name}</div>
+                                  {lang === 'ar' && item.nameAr && (
+                                    <div className=\"text-xs text-gray-500\">{item.nameAr}</div>
+                                  )}
+                                </td>
+                                <td className=\"px-4 py-3\">
+                                  <div className=\"text-xs text-gray-600 capitalize\">{item.type}</div>
+                                  <div className=\"text-xs text-gray-500\">{item.size}</div>
+                                </td>
+                                <td className=\"px-4 py-3 text-center\">
+                                  <span className=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800\">
+                                    {item.cleanStock}
+                                  </span>
+                                </td>
+                                <td className=\"px-4 py-3\">
+                                  <input
+                                    type=\"number\"
+                                    min=\"0\"
+                                    max={item.cleanStock}
+                                    value={item.quantity}
+                                    onChange={(e) => updateBulkItemQuantity(item.id, e.target.value)}
+                                    className=\"w-20 px-2 py-1.5 border-2 border-gray-200 rounded text-center focus:ring-2 focus:ring-pink-500 focus:border-pink-500\"
+                                    placeholder=\"0\"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className=\"mt-2 text-xs text-gray-500\">
+                        Total items to return: {bulkReturnItems.filter(i => i.quantity > 0).length} items, 
+                        Quantity: {bulkReturnItems.reduce((sum, i) => sum + i.quantity, 0)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className=\"block text-sm font-semibold text-gray-700 mb-2\">Notes</label>
+                    <textarea
+                      value={transactionData.notes}
+                      onChange={(e) => setTransactionData({ ...transactionData, notes: e.target.value })}
+                      className=\"w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 resize-none\"
+                      rows=\"3\"
+                      placeholder=\"Optional notes about this return...\"
+                    />
+                  </div>
+                </>
+              ) : (
+                /* Regular Single Item Transaction Form */
+                <>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Linen Item *</label>
                 <Select
@@ -1226,12 +1452,17 @@ export default function Linen({ user, lang = 'en' }) {
                   placeholder="Optional notes about this transaction..."
                 />
               </div>
+              </>
+              )}
 
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowTransactionModal(false)
+                    setBulkReturnMode(false)
+                    setSelectedRoom(null)
+                    setBulkReturnItems([])
                     setTransactionData({
                       linen_item_id: '',
                       transaction_type: '',
@@ -1246,9 +1477,10 @@ export default function Linen({ user, lang = 'en' }) {
                 </button>
                 <button
                   type="submit"
+                  onClick={bulkReturnMode ? handleBulkReturn : undefined}
                   className="flex-1 bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                 >
-                  Process Transaction
+                  {bulkReturnMode ? 'Return Soiled Linen' : 'Process Transaction'}
                 </button>
               </div>
             </form>
