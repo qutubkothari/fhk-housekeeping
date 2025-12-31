@@ -821,8 +821,6 @@ export default function Inventory({ user, lang = 'en' }) {
           </div>
         </div>
       )}
-        </div>
-      )}
 
       {/* Add/Edit Item Modal */}
       {showItemModal && (
