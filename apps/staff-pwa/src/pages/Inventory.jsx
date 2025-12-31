@@ -498,9 +498,9 @@ export default function Inventory({ user, lang = 'en' }) {
 
           {/* Staff Cards Grid */}
           {viewMode === 'cards' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {staff
-              .filter(person => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {staff
+                .filter(person => {
                 if (!staffSearchQuery) return true
                 const query = staffSearchQuery.toLowerCase()
                 return (
@@ -577,7 +577,7 @@ export default function Inventory({ user, lang = 'en' }) {
                   </div>
                 )
               })}
-          </div>
+            </div>
           )}
 
           {/* Staff Table View */}
