@@ -25,7 +25,8 @@ export default function ServiceRequests({ user, lang = 'en' }) {
     category: 'general',
     issues_reported: [],
     priority: 'normal',
-    assigned_to: ''
+    assigned_to: '',
+    status: 'open'
   })
   
   const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
@@ -106,7 +107,8 @@ export default function ServiceRequests({ user, lang = 'en' }) {
       category: request.category || 'general',
       issues_reported: Array.isArray(request.issues_reported) ? request.issues_reported : [],
       priority: request.priority,
-      assigned_to: request.assigned_to || ''
+      assigned_to: request.assigned_to || '',
+      status: request.status || 'open'
     })
     setShowCreateModal(true)
   }
@@ -141,7 +143,10 @@ export default function ServiceRequests({ user, lang = 'en' }) {
         category: requestData.category,
         issues_reported: requestData.issues_reported?.length ? requestData.issues_reported : null,
         priority: requestData.priority,
-        assigned_to: requestData.assigned_to || null
+        assigned_to: requestData.assigned_to || null,
+        status: requestData.status,
+        ...(requestData.status === 'resolved' && { resolved_at: new Date().toISOString() }),
+        ...(requestData.status === 'closed' && { closed_at: new Date().toISOString() })
       }
 
       let { error } = await supabase
@@ -169,7 +174,8 @@ export default function ServiceRequests({ user, lang = 'en' }) {
         category: 'general',
         issues_reported: [],
         priority: 'normal',
-        assigned_to: ''
+        assigned_to: '',
+        status: 'open'
       })
       fetchData()
     } catch (error) {
@@ -216,7 +222,8 @@ export default function ServiceRequests({ user, lang = 'en' }) {
         category: 'general',
         issues_reported: [],
         priority: 'normal',
-        assigned_to: ''
+        assigned_to: '',
+        status: 'open'
       })
       
       setShowCreateModal(false)
@@ -323,9 +330,11 @@ export default function ServiceRequests({ user, lang = 'en' }) {
             onChange={(option) => setFilterStatus(option?.value || 'all')}
             options={[
               { value: 'all', label: 'All Status' },
-              { value: 'pending', label: 'Pending' },
+              { value: 'open', label: 'Open' },
+              { value: 'assigned', label: 'Assigned' },
               { value: 'in_progress', label: 'In Progress' },
               { value: 'resolved', label: 'Resolved' },
+              { value: 'closed', label: 'Closed' },
               { value: 'cancelled', label: 'Cancelled' }
             ]}
             styles={customSelectStyles}
@@ -599,6 +608,27 @@ export default function ServiceRequests({ user, lang = 'en' }) {
                     required
                   />
                 </div>
+
+                {modalMode === 'edit' && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Status *</label>
+                    <Select
+                      value={{ value: requestData.status, label: requestData.status.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
+                      onChange={(option) => setRequestData({ ...requestData, status: option?.value || 'open' })}
+                      options={[
+                        { value: 'open', label: 'Open' },
+                        { value: 'assigned', label: 'Assigned' },
+                        { value: 'in_progress', label: 'In Progress' },
+                        { value: 'resolved', label: 'Resolved' },
+                        { value: 'closed', label: 'Closed' },
+                        { value: 'cancelled', label: 'Cancelled' }
+                      ]}
+                      styles={customSelectStyles}
+                      isSearchable
+                      required
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Assign To</label>
