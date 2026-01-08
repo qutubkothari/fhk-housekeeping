@@ -50,7 +50,6 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
 
       { id: 'location-master', section: 'masters', label: lang === 'ar' ? 'إدارة المواقع' : 'Location Master', icon: MapPin, roles: ['admin', 'super_admin'] },
       { id: 'shift-master', section: 'masters', label: lang === 'ar' ? 'إدارة الورديات' : 'Shift Master', icon: Calendar, roles: ['admin', 'super_admin'] },
-      { id: 'job-role-master', section: 'masters', label: lang === 'ar' ? 'إدارة أدوار النظام' : 'System Role Master', icon: Users, roles: ['admin', 'super_admin'] },
       { id: 'vendor-management', section: 'masters', label: lang === 'ar' ? 'إدارة الموردين' : 'Vendor Management', icon: Store, roles: ['admin', 'super_admin'] },
       { id: 'activity-master', section: 'masters', label: lang === 'ar' ? 'أنشطة التدبير' : 'Activity Master', icon: ClipboardList, roles: ['admin', 'super_admin'] },
 

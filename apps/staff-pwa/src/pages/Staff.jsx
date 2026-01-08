@@ -8,6 +8,15 @@ import { translations } from '../translations'
 export default function Staff({ user, lang = 'en' }) {
   const t = (key) => translations[key]?.[lang] || key
 
+  const getSystemRoleLabel = (role) => {
+    if (role === 'staff') return 'Housekeeping'
+    return String(role)
+      .replace('_', ' ')
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+  }
+
   const [staff, setStaff] = useState([])
   const [locations, setLocations] = useState([])
   const [shifts, setShifts] = useState([])
@@ -250,6 +259,8 @@ export default function Staff({ user, lang = 'en' }) {
     return badges[role] || 'bg-gray-100 text-gray-700 border-gray-200'
   }
 
+  const getSystemRoleDisplay = (role) => (role === 'staff' ? 'Housekeeping' : String(role).replace('_', ' '))
+
   const filteredStaff = staff.filter(member => {
     const matchesSearch = member.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -383,7 +394,7 @@ export default function Staff({ user, lang = 'en' }) {
                     <h3 className="text-lg font-bold text-gray-900">{member.full_name}</h3>
                     <div className="flex items-center gap-2 flex-wrap mt-1">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
-                        {member.role.replace('_', ' ')}
+                        {getSystemRoleDisplay(member.role)}
                       </span>
                     </div>
                     {getOperationalActivitiesLabel(member.id) ? (
@@ -481,7 +492,7 @@ export default function Staff({ user, lang = 'en' }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
-                        {member.role.replace('_', ' ')}
+                        {getSystemRoleDisplay(member.role)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -593,20 +604,12 @@ export default function Staff({ user, lang = 'en' }) {
                   <Select
                     value={{
                       value: formData.role,
-                      label: String(formData.role)
-                        .replace('_', ' ')
-                        .split(' ')
-                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' '),
+                      label: getSystemRoleLabel(formData.role),
                     }}
                     onChange={(option) => setFormData({ ...formData, role: option?.value || 'staff' })}
                     options={systemRoles.map((role) => ({
                       value: role,
-                      label: String(role)
-                        .replace('_', ' ')
-                        .split(' ')
-                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' '),
+                      label: getSystemRoleLabel(role),
                     }))}
                     styles={customSelectStyles}
                     isSearchable
