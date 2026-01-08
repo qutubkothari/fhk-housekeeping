@@ -40,7 +40,7 @@ export default function Linen({ user, lang = 'en' }) {
   })
   const [bulkReturnMode, setBulkReturnMode] = useState(false)
   const [bulkReturnItems, setBulkReturnItems] = useState([])
-  const [selectedRoom, setSelectedRoom] = useState(null)
+  const [selectedRooms, setSelectedRooms] = useState([])
 
   useEffect(() => {
     console.log('🟣 Linen v3.0 - WITH TRANSACTIONS')
@@ -220,8 +220,8 @@ export default function Linen({ user, lang = 'en' }) {
     }
   }
 
-  const handleRoomSelect = (roomId) => {
-    setSelectedRoom(roomId)
+  const handleRoomSelect = (roomIds) => {
+    setSelectedRooms(roomIds)
     // Initialize bulk return items with all linen items
     const items = linens.map(linen => ({
       id: linen.id,
@@ -255,26 +255,27 @@ export default function Linen({ user, lang = 'en' }) {
       return
     }
     
-    if (!selectedRoom) {
-      alert('Please select a room')
+    if (!selectedRooms.length) {
+      alert('Please select at least one room')
       return
     }
 
     try {
-      // Process each item
+      // Process each item (apply same quantities to all selected rooms)
       for (const item of itemsToReturn) {
         const linen = linens.find(l => l.id === item.id)
         if (!linen) continue
 
-        const quantity = item.quantity
+        const quantityPerRoom = item.quantity
+        const totalQuantity = quantityPerRoom * selectedRooms.length
         let newClean = linen.clean_stock
         let newSoiled = linen.soiled_stock
         let newLaundry = linen.in_laundry
 
         // Return soiled: move from clean to soiled
-        if (newClean >= quantity) {
-          newClean -= quantity
-          newSoiled += quantity
+        if (newClean >= totalQuantity) {
+          newClean -= totalQuantity
+          newSoiled += totalQuantity
         } else {
           alert(`Not enough clean stock for ${linen.item_name_en}`)
           continue
@@ -282,18 +283,20 @@ export default function Linen({ user, lang = 'en' }) {
 
         const newTotal = newClean + newSoiled + newLaundry
 
-        // Insert transaction
+        // Insert one transaction per selected room
+        const transactionsToInsert = selectedRooms.map((roomId) => ({
+          org_id: user.org_id,
+          linen_id: item.id,
+          transaction_type: 'return_soiled',
+          quantity: quantityPerRoom,
+          room_id: roomId,
+          notes: transactionData.notes,
+          created_by: user.id
+        }))
+
         const { error: transError } = await supabase
           .from('linen_transactions')
-          .insert([{
-            org_id: user.org_id,
-            linen_id: item.id,
-            transaction_type: 'return_soiled',
-            quantity: quantity,
-            room_id: selectedRoom,
-            notes: transactionData.notes,
-            created_by: user.id
-          }])
+          .insert(transactionsToInsert)
 
         if (transError) throw transError
 
@@ -314,7 +317,7 @@ export default function Linen({ user, lang = 'en' }) {
       // Reset form
       setBulkReturnMode(false)
       setShowTransactionModal(false)
-      setSelectedRoom(null)
+      setSelectedRooms([])
       setBulkReturnItems([])
       setTransactionData({
         linen_id: '',
@@ -1265,18 +1268,22 @@ export default function Linen({ user, lang = 'en' }) {
               {bulkReturnMode && transactionData.transaction_type === 'return_soiled' ? (
                 <>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Room *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Rooms *</label>
                     <Select
-                      value={rooms.find(r => r.id === selectedRoom) ? {
-                        value: selectedRoom,
-                        label: `${rooms.find(r => r.id === selectedRoom).room_number} - ${rooms.find(r => r.id === selectedRoom).room_type}`
-                      } : null}
-                      onChange={(option) => handleRoomSelect(option?.value || '')}
+                      value={selectedRooms
+                        .map((id) => rooms.find((r) => r.id === id))
+                        .filter(Boolean)
+                        .map((room) => ({
+                          value: room.id,
+                          label: `${room.room_number} - ${room.room_type} (Floor ${room.floor})`
+                        }))}
+                      onChange={(options) => handleRoomSelect((options || []).map((o) => o.value))}
                       options={rooms.map(room => ({
                         value: room.id,
                         label: `${room.room_number} - ${room.room_type} (Floor ${room.floor})`
                       }))}
                       placeholder="Select room..."
+                      isMulti
                       isClearable
                       isSearchable
                       className="react-select-container"
@@ -1296,7 +1303,7 @@ export default function Linen({ user, lang = 'en' }) {
                     />
                   </div>
 
-                  {selectedRoom && bulkReturnItems.length > 0 && (
+                  {selectedRooms.length > 0 && bulkReturnItems.length > 0 && (
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-3">Linen Items - Enter Soiled Quantities</label>
                       <div className="max-h-96 overflow-y-auto border-2 border-gray-200 rounded-lg">
@@ -1344,8 +1351,9 @@ export default function Linen({ user, lang = 'en' }) {
                         </table>
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        Total items to return: {bulkReturnItems.filter(i => i.quantity > 0).length} items, 
-                        Quantity: {bulkReturnItems.reduce((sum, i) => sum + i.quantity, 0)}
+                        Rooms selected: {selectedRooms.length}, Items: {bulkReturnItems.filter(i => i.quantity > 0).length},
+                        Qty/room: {bulkReturnItems.reduce((sum, i) => sum + i.quantity, 0)},
+                        Total qty: {bulkReturnItems.reduce((sum, i) => sum + i.quantity, 0) * selectedRooms.length}
                       </div>
                     </div>
                   )}
