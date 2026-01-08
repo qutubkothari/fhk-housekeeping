@@ -38,16 +38,29 @@ export default function Dashboard({ user, lang = 'en' }) {
       const today = new Date().toISOString().split('T')[0]
 
       let tasks = []
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('activity_assignments')
-        .select('status, created_at')
-        .eq('org_id', user.org_id)
-        .gte('created_at', today)
+      try {
+        // activity_assignments does NOT have org_id; scope via room_assignments
+        const { data: roomAssignments, error: roomAssignmentsError } = await supabase
+          .from('room_assignments')
+          .select('id')
+          .eq('org_id', user.org_id)
+          .eq('assignment_date', today)
+          .neq('status', 'cancelled')
 
-      if (tasksError) {
+        if (roomAssignmentsError) throw roomAssignmentsError
+
+        const roomAssignmentIds = (roomAssignments || []).map(r => r.id)
+        if (roomAssignmentIds.length > 0) {
+          const { data: tasksData, error: tasksError } = await supabase
+            .from('activity_assignments')
+            .select('status')
+            .in('room_assignment_id', roomAssignmentIds)
+
+          if (tasksError) throw tasksError
+          tasks = tasksData || []
+        }
+      } catch (tasksError) {
         console.warn('Dashboard: activity_assignments unavailable:', tasksError)
-      } else {
-        tasks = tasksData || []
       }
 
       const taskStats = {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Plus, Search, Edit2, Trash2, Eye, RefreshCw, Users as UsersIcon, Mail, Phone, Shield } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Eye, RefreshCw, Users as UsersIcon, Mail, Phone, Shield, Grid, List } from 'lucide-react'
 import Select from 'react-select'
 import { customSelectStyles } from '../utils/selectStyles'
 import { translations } from '../translations'
@@ -12,9 +12,11 @@ export default function Staff({ user, lang = 'en' }) {
   const [locations, setLocations] = useState([])
   const [shifts, setShifts] = useState([])
   const [activities, setActivities] = useState([])
+  const [operationalActivitiesByUserId, setOperationalActivitiesByUserId] = useState({}) // { [userId]: activityId[] }
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('all')
+  const [viewMode, setViewMode] = useState('cards') // 'cards' or 'table'
   const [showModal, setShowModal] = useState(false)
   const [modalMode, setModalMode] = useState('add')
   const [selectedStaff, setSelectedStaff] = useState(null)
@@ -23,7 +25,6 @@ export default function Staff({ user, lang = 'en' }) {
     email: '',
     phone: '',
     role: 'staff',
-    job_role: '',
     is_active: true,
     location_id: null,
     shift_id: null,
@@ -32,19 +33,6 @@ export default function Staff({ user, lang = 'en' }) {
 
   // System permission roles (used for access control + routing)
   const systemRoles = ['super_admin', 'admin', 'supervisor', 'staff', 'maintenance', 'front_desk', 'inventory', 'laundry']
-
-  // Client-required job roles (stored separately from system role)
-  const jobRoles = [
-    'Passages East & West Cleaning',
-    'Rooms Cleaning',
-    'Washroom Cleaning',
-    'Lobby Area Cleaning',
-    'Supervisor',
-    'MST',
-    'Linen Attendant',
-    'Front Desk',
-    'Store',
-  ]
 
   useEffect(() => {
     if (user?.org_id) {
@@ -80,11 +68,44 @@ export default function Staff({ user, lang = 'en' }) {
 
       if (error) throw error
       setStaff(data || [])
+
+      // Best-effort: load operational activities mapping (don't break if table/RLS missing)
+      try {
+        const { data: mappingRows, error: mappingError } = await supabase
+          .from('user_operational_activities')
+          .select('user_id, activity_id')
+          .eq('org_id', user.org_id)
+
+        if (mappingError) throw mappingError
+
+        const byUser = (mappingRows || []).reduce((acc, row) => {
+          if (!row?.user_id || !row?.activity_id) return acc
+          if (!acc[row.user_id]) acc[row.user_id] = []
+          acc[row.user_id].push(row.activity_id)
+          return acc
+        }, {})
+
+        setOperationalActivitiesByUserId(byUser)
+      } catch (e) {
+        console.warn('Operational activities mapping not available:', e?.message || e)
+        setOperationalActivitiesByUserId({})
+      }
     } catch (error) {
       console.error('Error:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const getOperationalActivitiesLabel = (userId) => {
+    const ids = operationalActivitiesByUserId?.[userId] || []
+    if (!ids.length) return ''
+
+    const labelById = new Map((activities || []).map((a) => [a.id, a.code || a.name]))
+    return ids
+      .map((id) => labelById.get(id))
+      .filter(Boolean)
+      .join(', ')
   }
 
   const handleAdd = () => {
@@ -95,7 +116,6 @@ export default function Staff({ user, lang = 'en' }) {
       email: '',
       phone: '',
       role: 'staff',
-      job_role: '',
       is_active: true,
       location_id: null,
       shift_id: null,
@@ -112,7 +132,6 @@ export default function Staff({ user, lang = 'en' }) {
       email: member.email,
       phone: member.phone || '',
       role: member.role,
-      job_role: member.job_role || '',
       is_active: member.is_active,
       location_id: member.location_id || null,
       shift_id: member.shift_id || null,
@@ -306,6 +325,33 @@ export default function Staff({ user, lang = 'en' }) {
             isSearchable
             className="min-w-[180px]"
           />
+
+          {/* View Mode Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+              <span className="hidden sm:inline">Cards</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
+
           <button
             onClick={() => fetchStaff()}
             className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center gap-2 transition-colors"
@@ -323,77 +369,173 @@ export default function Staff({ user, lang = 'en' }) {
         </div>
       </div>
 
-      {/* Staff Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredStaff.map(member => (
-          <div key={member.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all p-6 border border-gray-100">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                  {member.full_name?.charAt(0).toUpperCase()}
+      {/* Staff Grid or Table View */}
+      {viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredStaff.map(member => (
+            <div key={member.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all p-6 border border-gray-100">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    {member.full_name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{member.full_name}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
+                      {member.role.replace('_', ' ')}
+                    </span>
+                    {getOperationalActivitiesLabel(member.id) ? (
+                      <div className="text-xs text-gray-600 mt-1">{getOperationalActivitiesLabel(member.id)}</div>
+                    ) : null}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{member.full_name}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
-                    {member.role.replace('_', ' ')}
-                  </span>
-                  {member.job_role ? (
-                    <div className="text-xs text-gray-600 mt-1">{member.job_role}</div>
-                  ) : null}
-                </div>
+                <div
+                  className={`w-3 h-3 rounded-full ${member.is_active ? 'bg-green-500' : 'bg-gray-400'}`}
+                  title={member.is_active ? 'Active' : 'Inactive'}
+                ></div>
               </div>
-              <div className={`w-3 h-3 rounded-full ${member.is_active ? 'bg-green-500' : 'bg-gray-400'}`} 
-                   title={member.is_active ? 'Active' : 'Inactive'}></div>
-            </div>
 
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Mail className="w-4 h-4" />
-                <span className="truncate">{member.email}</span>
-              </div>
-              {member.phone && (
+              <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone className="w-4 h-4" />
-                  <span>{member.phone}</span>
+                  <Mail className="w-4 h-4" />
+                  <span className="truncate">{member.email}</span>
                 </div>
-              )}
+                {(member.phone || member.phone_number) && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone className="w-4 h-4" />
+                    <span>{member.phone || member.phone_number}</span>
+                  </div>
+                )}
 
-              {(member.location_id || member.shift_id) && (
-                <div className="text-xs text-gray-600 pt-1">
-                  {member.location_id && (
-                    <span className="mr-2">
-                      <span className="font-semibold">Location:</span>{' '}
-                      {locations.find((l) => l.id === member.location_id)?.name || '—'}
-                    </span>
-                  )}
-                  {member.shift_id && (
-                    <span>
-                      <span className="font-semibold">Shift:</span>{' '}
-                      {shifts.find((s) => s.id === member.shift_id)?.name || '—'}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+                {(member.location_id || member.shift_id) && (
+                  <div className="text-xs text-gray-600 pt-1">
+                    {member.location_id && (
+                      <span className="mr-2">
+                        <span className="font-semibold">Location:</span>{' '}
+                        {locations.find((l) => l.id === member.location_id)?.name || '—'}
+                      </span>
+                    )}
+                    {member.shift_id && (
+                      <span>
+                        <span className="font-semibold">Shift:</span>{' '}
+                        {shifts.find((s) => s.id === member.shift_id)?.name || '—'}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            <div className="flex gap-2 pt-4 border-t border-gray-100">
-              <button
-                onClick={() => handleEdit(member)}
-                className="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg flex items-center justify-center gap-2 transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(member)}
-                className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex gap-2 pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => handleEdit(member)}
+                  className="flex-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(member)}
+                  className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Location / Shift</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredStaff.map((member, index) => (
+                  <tr
+                    key={member.id}
+                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                          {member.full_name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{member.full_name}</div>
+                          {getOperationalActivitiesLabel(member.id) ? (
+                            <div className="text-xs text-gray-600">{getOperationalActivitiesLabel(member.id)}</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
+                        {member.role.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-600 max-w-xs truncate">{member.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-600">{member.phone || member.phone_number || '—'}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs text-gray-600">
+                        <div>
+                          <span className="font-semibold">Location:</span>{' '}
+                          {member.location_id ? locations.find((l) => l.id === member.location_id)?.name || '—' : '—'}
+                        </div>
+                        <div>
+                          <span className="font-semibold">Shift:</span>{' '}
+                          {member.shift_id ? shifts.find((s) => s.id === member.shift_id)?.name || '—' : '—'}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span
+                        className={`inline-flex items-center px-3 py-1.5 rounded-lg font-semibold text-xs border ${
+                          member.is_active
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : 'bg-gray-100 text-gray-700 border-gray-200'
+                        }`}
+                      >
+                        {member.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(member)}
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(member)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {filteredStaff.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl shadow-lg">
@@ -466,19 +608,6 @@ export default function Staff({ user, lang = 'en' }) {
                     }))}
                     styles={customSelectStyles}
                     isSearchable
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Job Role</label>
-                  <Select
-                    value={formData.job_role ? { value: formData.job_role, label: formData.job_role } : null}
-                    onChange={(option) => setFormData({ ...formData, job_role: option?.value || '' })}
-                    options={jobRoles.map((r) => ({ value: r, label: r }))}
-                    styles={customSelectStyles}
-                    isClearable
-                    isSearchable
-                    placeholder="Select job role"
                   />
                 </div>
 

@@ -7,6 +7,7 @@ import Housekeeping from './pages/Housekeeping'
 import ServiceRequests from './pages/ServiceRequests'
 import Staff from './pages/Staff'
 import ActivityTasks from './components/ActivityTasks'
+import ReturnSoiledLinenMobile from './components/ReturnSoiledLinenMobile'
 import Inventory from './pages/Inventory'
 import Linen from './pages/Linen'
 import Reports from './pages/Reports'
@@ -158,7 +159,8 @@ function App() {
       
       if (isMaintenance) {
         // Load maintenance issues from service_requests table
-        const query = `service_requests?assigned_to=eq.${userId}&status=in.("pending","assigned","in_progress")&request_type=eq.maintenance&select=id,org_id,status,priority,title,category,description,rooms(id,room_number,floor,status)&order=priority.desc`
+        // service_requests.status allowed: open, assigned, in_progress, resolved, closed, cancelled
+        const query = `service_requests?assigned_to=eq.${userId}&status=in.("open","assigned","in_progress")&request_type=eq.maintenance&select=id,org_id,status,priority,title,category,description,rooms(id,room_number,floor,status)&order=priority.desc`
         console.log('📡 Maintenance query:', query)
         const tasks = await api(query)
         console.log('✅ Maintenance tasks loaded:', tasks)
@@ -240,10 +242,11 @@ function App() {
       const updateTable = isMaintenance ? 'service_requests' : 'activity_assignments'
       await api(`${updateTable}?id=eq.${task.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          status: 'in_progress',
-          started_at: new Date().toISOString()
-        })
+        body: JSON.stringify(
+          isMaintenance
+            ? { status: 'in_progress' }
+            : { status: 'in_progress', started_at: new Date().toISOString() }
+        )
       })
 
       await api(`rooms?id=eq.${task.rooms.id}`, {
@@ -313,11 +316,11 @@ function App() {
       const updateTable = isMaintenance ? 'service_requests' : 'activity_assignments'
       await api(`${updateTable}?id=eq.${taskId}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          status: isMaintenance ? 'resolved' : 'completed',
-          completed_at: now,
-          ...(isMaintenance && { resolved_at: now })
-        })
+        body: JSON.stringify(
+          isMaintenance
+            ? { status: 'resolved', resolved_at: now }
+            : { status: 'completed', completed_at: now }
+        )
       })
 
       await api(`rooms?id=eq.${activeSession.room_id}`, {
@@ -401,7 +404,7 @@ function App() {
         body: JSON.stringify({
           org_id: user.org_id,
           reported_by: user.id,
-          status: 'pending',
+          status: 'open',
           request_type: 'maintenance',
           ...requestData
         })
@@ -876,6 +879,7 @@ function App() {
         {/* Staff (Housekeeping) - New flow: activity-based assignments */}
         {user.role === 'staff' && page === 'rooms' && (
           <div className="max-w-4xl mx-auto">
+            <ReturnSoiledLinenMobile lang={lang} user={user} />
             <ActivityTasks lang={lang} user={user} />
           </div>
         )}

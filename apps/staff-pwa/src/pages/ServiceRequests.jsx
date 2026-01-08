@@ -31,6 +31,25 @@ export default function ServiceRequests({ user, lang = 'en' }) {
   
   const t = (key) => translations[key]?.[lang] || translations[key]?.en || key
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'open':
+        return 'Pending'
+      case 'assigned':
+        return 'Assigned'
+      case 'in_progress':
+        return 'In Progress'
+      case 'resolved':
+        return 'Resolved'
+      case 'closed':
+        return 'Closed'
+      case 'cancelled':
+        return 'Cancelled'
+      default:
+        return status || '—'
+    }
+  }
+
   useEffect(() => {
     console.log('🟠 ServiceRequests v2.0 - WITH CREATE REQUEST BUTTON')
     if (user?.org_id) {
@@ -237,10 +256,13 @@ export default function ServiceRequests({ user, lang = 'en' }) {
 
   const getStatusBadge = (status) => {
     const styles = {
+      open: 'bg-yellow-100 text-yellow-700 border-yellow-200',
       pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      assigned: 'bg-indigo-100 text-indigo-700 border-indigo-200',
       in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
       resolved: 'bg-green-100 text-green-700 border-green-200',
       cancelled: 'bg-gray-100 text-gray-700 border-gray-200',
+      closed: 'bg-gray-100 text-gray-700 border-gray-200',
     }
     return styles[status] || 'bg-gray-100 text-gray-700 border-gray-200'
   }
@@ -265,7 +287,7 @@ export default function ServiceRequests({ user, lang = 'en' }) {
 
   const stats = {
     total: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
+    pending: requests.filter(r => r.status === 'open' || r.status === 'pending').length,
     in_progress: requests.filter(r => r.status === 'in_progress').length,
     resolved: requests.filter(r => r.status === 'resolved').length,
   }
@@ -326,15 +348,14 @@ export default function ServiceRequests({ user, lang = 'en' }) {
             />
           </div>
           <Select
-            value={{ value: filterStatus, label: filterStatus === 'all' ? 'All Status' : filterStatus.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
+            value={{ value: filterStatus, label: filterStatus === 'all' ? 'All Status' : getStatusLabel(filterStatus) }}
             onChange={(option) => setFilterStatus(option?.value || 'all')}
             options={[
               { value: 'all', label: 'All Status' },
-              { value: 'open', label: 'Open' },
+              { value: 'open', label: 'Pending' },
               { value: 'assigned', label: 'Assigned' },
               { value: 'in_progress', label: 'In Progress' },
               { value: 'resolved', label: 'Resolved' },
-              { value: 'closed', label: 'Closed' },
               { value: 'cancelled', label: 'Cancelled' }
             ]}
             styles={customSelectStyles}
@@ -401,7 +422,7 @@ export default function ServiceRequests({ user, lang = 'en' }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full border ${getStatusBadge(req.status)}`}>
-                      {req.status}
+                      {getStatusLabel(req.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -613,14 +634,13 @@ export default function ServiceRequests({ user, lang = 'en' }) {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Status *</label>
                     <Select
-                      value={{ value: requestData.status, label: requestData.status.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }}
+                      value={{ value: requestData.status, label: getStatusLabel(requestData.status) }}
                       onChange={(option) => setRequestData({ ...requestData, status: option?.value || 'open' })}
                       options={[
-                        { value: 'open', label: 'Open' },
+                        { value: 'open', label: 'Pending' },
                         { value: 'assigned', label: 'Assigned' },
                         { value: 'in_progress', label: 'In Progress' },
                         { value: 'resolved', label: 'Resolved' },
-                        { value: 'closed', label: 'Closed' },
                         { value: 'cancelled', label: 'Cancelled' }
                       ]}
                       styles={customSelectStyles}

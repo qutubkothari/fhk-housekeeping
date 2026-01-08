@@ -20,6 +20,9 @@ export default function BulkAssignment({ user, lang = 'en' }) {
   const [existingAssignments, setExistingAssignments] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const [editingAssignment, setEditingAssignment] = useState(null)
+  const [editStaffByActivityAssignmentId, setEditStaffByActivityAssignmentId] = useState({})
+
   // Selection state
   const [selectedRooms, setSelectedRooms] = useState([])
   const [selectedActivities, setSelectedActivities] = useState([])
@@ -237,6 +240,84 @@ export default function BulkAssignment({ user, lang = 'en' }) {
     }
   }
 
+  const openEditAssignment = (assignment) => {
+    setEditingAssignment(assignment)
+    const initialMap = (assignment?.activity_assignments || []).reduce((acc, aa) => {
+      if (!aa?.id) return acc
+      acc[aa.id] = aa.assigned_to || ''
+      return acc
+    }, {})
+    setEditStaffByActivityAssignmentId(initialMap)
+  }
+
+  const closeEditAssignment = () => {
+    setEditingAssignment(null)
+    setEditStaffByActivityAssignmentId({})
+  }
+
+  const saveEditedAssignment = async () => {
+    if (!editingAssignment) return
+
+    try {
+      const updates = (editingAssignment.activity_assignments || [])
+        .filter((aa) => aa?.id)
+        .filter((aa) => aa.status !== 'completed' && aa.status !== 'cancelled')
+        .map((aa) => {
+          const nextStaffId = editStaffByActivityAssignmentId?.[aa.id] || aa.assigned_to
+          if (!nextStaffId || nextStaffId === aa.assigned_to) return null
+          return { id: aa.id, assigned_to: nextStaffId }
+        })
+        .filter(Boolean)
+
+      if (updates.length === 0) {
+        closeEditAssignment()
+        return
+      }
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('activity_assignments')
+          .update({ assigned_to: update.assigned_to })
+          .eq('id', update.id)
+
+        if (error) throw error
+      }
+
+      alert('Assignment updated successfully')
+      closeEditAssignment()
+      fetchData()
+    } catch (error) {
+      console.error('Error updating assignment:', error)
+      alert('Error updating assignment: ' + error.message)
+    }
+  }
+
+  const deleteActivityAssignmentFromRoom = async (activityAssignmentId) => {
+    if (!confirm('Delete this activity assignment?')) return
+
+    try {
+      const { error } = await supabase
+        .from('activity_assignments')
+        .delete()
+        .eq('id', activityAssignmentId)
+
+      if (error) throw error
+
+      if (editingAssignment) {
+        const next = {
+          ...editingAssignment,
+          activity_assignments: (editingAssignment.activity_assignments || []).filter((aa) => aa.id !== activityAssignmentId),
+        }
+        setEditingAssignment(next)
+      }
+
+      fetchData()
+    } catch (error) {
+      console.error('Error deleting activity assignment:', error)
+      alert('Error deleting activity assignment: ' + error.message)
+    }
+  }
+
   if (loading) {
     return <div className="text-center py-12">{t('loading')}</div>
   }
@@ -369,6 +450,13 @@ export default function BulkAssignment({ user, lang = 'en' }) {
                           </button>
                         )}
                         <button
+                          onClick={() => openEditAssignment(assignment)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit Assignment"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                        </button>
+                        <button
                           onClick={() => handleDeleteAssignment(assignment.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete Assignment"
@@ -381,6 +469,94 @@ export default function BulkAssignment({ user, lang = 'en' }) {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Assignment Modal */}
+      {editingAssignment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Edit Assignment – Room {editingAssignment.rooms?.room_number}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Update assigned staff for each activity</p>
+              </div>
+              <button onClick={closeEditAssignment} className="p-2 hover:bg-gray-100 rounded-lg" title="Close">
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {(editingAssignment.activity_assignments || []).length === 0 ? (
+                <div className="text-sm text-gray-600">No activity assignments found for this room assignment.</div>
+              ) : (
+                (editingAssignment.activity_assignments || []).map((aa) => {
+                  const staffId = editStaffByActivityAssignmentId?.[aa.id] ?? aa.assigned_to ?? ''
+                  const isLocked = aa.status === 'completed' || aa.status === 'cancelled'
+
+                  return (
+                    <div key={aa.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">{aa.housekeeping_activities?.name || 'Activity'}</div>
+                          <div className="text-xs text-gray-600 mt-1">Status: {aa.status}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => deleteActivityAssignmentFromRoom(aa.id)}
+                            className={`p-2 rounded-lg transition-colors ${isLocked ? 'text-gray-300 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'}`}
+                            title="Delete activity assignment"
+                            disabled={isLocked}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Assigned Staff</label>
+                        <select
+                          className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                          value={staffId}
+                          disabled={isLocked}
+                          onChange={(e) =>
+                            setEditStaffByActivityAssignmentId((prev) => ({
+                              ...prev,
+                              [aa.id]: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">Select staff</option>
+                          {staff.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={closeEditAssignment}
+                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditedAssignment}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       )}
