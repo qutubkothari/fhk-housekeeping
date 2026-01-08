@@ -20,6 +20,11 @@ CREATE INDEX IF NOT EXISTS idx_job_roles_department ON job_roles(department);
 -- Disable RLS (using direct auth instead)
 ALTER TABLE job_roles DISABLE ROW LEVEL SECURITY;
 
+-- Grant permissions for direct client access
+GRANT ALL ON job_roles TO authenticated;
+GRANT ALL ON job_roles TO anon;
+GRANT ALL ON job_roles TO service_role;
+
 -- Add trigger for updated_at
 CREATE OR REPLACE FUNCTION update_job_roles_updated_at()
 RETURNS TRIGGER AS $$
@@ -28,6 +33,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS job_roles_updated_at ON job_roles;
 
 CREATE TRIGGER job_roles_updated_at
   BEFORE UPDATE ON job_roles
