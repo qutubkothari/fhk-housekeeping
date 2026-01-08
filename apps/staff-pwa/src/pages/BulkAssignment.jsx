@@ -11,13 +11,14 @@ export default function BulkAssignment({ user, lang = 'en' }) {
   const t = (key) => translations[key]?.[lang] || key
   const orgId = user?.org_id
 
-  const [step, setStep] = useState(1) // 1: Select Rooms, 2: Select Activities, 3: Assign Staff, 4: Review
+  const [step, setStep] = useState(1) // 1: Select Activities, 2: Select Rooms (optional), 3: Assign Staff, 4: Review
   const [viewMode, setViewMode] = useState('create') // 'create' or 'manage'
   const [rooms, setRooms] = useState([])
   const [activities, setActivities] = useState([])
   const [staff, setStaff] = useState([])
   const [shifts, setShifts] = useState([])
   const [existingAssignments, setExistingAssignments] = useState([])
+  const [existingGeneralAssignments, setExistingGeneralAssignments] = useState([])
   const [loading, setLoading] = useState(true)
 
   const [editingAssignment, setEditingAssignment] = useState(null)
@@ -33,6 +34,12 @@ export default function BulkAssignment({ user, lang = 'en' }) {
     notes: ''
   })
   const [activityStaffMap, setActivityStaffMap] = useState({}) // { activity_id: staff_id }
+
+  // Room selector UX
+  const [roomSearchTerm, setRoomSearchTerm] = useState('')
+  const [roomSort, setRoomSort] = useState({ key: 'room_number', direction: 'asc' })
+  const [roomPage, setRoomPage] = useState(1)
+  const ROOMS_PAGE_SIZE = 20
 
   useEffect(() => {
     fetchData()
@@ -97,6 +104,27 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         if (!error) {
           setExistingAssignments(assignmentsData || [])
         }
+
+        // Best-effort: General (no-room) assignments
+        try {
+          const { data: generalData, error: generalError } = await supabase
+            .from('general_activity_assignments')
+            .select(`
+              *,
+              shifts(name, start_time, end_time),
+              housekeeping_activities(name, code),
+              users:assigned_to(full_name)
+            `)
+            .eq('org_id', orgId)
+            .gte('assignment_date', new Date().toISOString().split('T')[0])
+            .order('created_at', { ascending: false })
+            .limit(50)
+
+          if (!generalError) setExistingGeneralAssignments(generalData || [])
+          else setExistingGeneralAssignments([])
+        } catch (e) {
+          setExistingGeneralAssignments([])
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -131,6 +159,62 @@ export default function BulkAssignment({ user, lang = 'en' }) {
 
   const handleSubmit = async () => {
     try {
+      if (!selectedActivities.length) {
+        alert('Please select at least one activity')
+        return
+      }
+
+      const selectedActivityAssignments = selectedActivities
+        .map((activityId) => ({ activityId, staffId: activityStaffMap[activityId] }))
+        .filter((x) => x.staffId)
+
+      if (selectedActivityAssignments.length === 0) {
+        alert('Please assign staff for at least one selected activity')
+        return
+      }
+
+      // If no rooms are selected, create general (no-room) activity assignments
+      if (selectedRooms.length === 0) {
+        const generalAssignments = selectedActivityAssignments.map(({ activityId, staffId }) => ({
+          org_id: orgId,
+          activity_id: activityId,
+          assigned_to: staffId,
+          assigned_by: user.id,
+          assignment_type: assignmentData.assignment_type,
+          shift_id: assignmentData.shift_id,
+          target_completion_time: assignmentData.target_completion_time || null,
+          notes: assignmentData.notes,
+        }))
+
+        const { error: generalError } = await supabase
+          .from('general_activity_assignments')
+          .insert(generalAssignments)
+
+        if (generalError) {
+          throw new Error(
+            generalError?.message ||
+              'Failed to create general assignments. Ensure general_activity_assignments table exists.'
+          )
+        }
+
+        alert(t('assignmentCreated'))
+
+        // Reset
+        setSelectedRooms([])
+        setSelectedActivities([])
+        setActivityStaffMap({})
+        setAssignmentData({
+          assignment_type: 'before_arrival',
+          shift_id: null,
+          target_completion_time: '',
+          notes: ''
+        })
+        setStep(1)
+        setViewMode('manage')
+        fetchData()
+        return
+      }
+
       // Create room assignments for each selected room
       const roomAssignments = selectedRooms.map(roomId => ({
         org_id: orgId,
@@ -190,6 +274,83 @@ export default function BulkAssignment({ user, lang = 'en' }) {
       alert('Error creating assignments: ' + error.message)
     }
   }
+
+  const handleDeleteGeneralAssignment = async (assignmentId) => {
+    if (!confirm('Are you sure you want to delete this assignment?')) return
+    try {
+      const { error } = await supabase
+        .from('general_activity_assignments')
+        .delete()
+        .eq('id', assignmentId)
+
+      if (error) throw error
+      alert('Assignment deleted successfully')
+      fetchData()
+    } catch (error) {
+      console.error('Error deleting general assignment:', error)
+      alert('Error deleting assignment: ' + error.message)
+    }
+  }
+
+  const handleCancelGeneralAssignment = async (assignmentId) => {
+    if (!confirm('Are you sure you want to cancel this assignment?')) return
+    try {
+      const { error } = await supabase
+        .from('general_activity_assignments')
+        .update({ status: 'cancelled' })
+        .eq('id', assignmentId)
+
+      if (error) throw error
+      alert('Assignment cancelled successfully')
+      fetchData()
+    } catch (error) {
+      console.error('Error cancelling general assignment:', error)
+      alert('Error cancelling assignment: ' + error.message)
+    }
+  }
+
+  const toggleRoomSort = (key) => {
+    setRoomSort((prev) => {
+      if (prev.key !== key) return { key, direction: 'asc' }
+      return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+    })
+  }
+
+  const getSortedRooms = (inputRooms) => {
+    const key = roomSort.key
+    const dir = roomSort.direction === 'asc' ? 1 : -1
+    const safeString = (v) => (v === null || v === undefined ? '' : String(v))
+    return [...inputRooms].sort((a, b) => {
+      const av = safeString(a?.[key])
+      const bv = safeString(b?.[key])
+      // numeric room numbers should sort naturally
+      const an = Number(av)
+      const bn = Number(bv)
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) return (an - bn) * dir
+      return av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' }) * dir
+    })
+  }
+
+  const filteredRooms = (() => {
+    const q = roomSearchTerm.trim().toLowerCase()
+    if (!q) return rooms
+    return rooms.filter((r) => {
+      const roomNo = String(r.room_number || '').toLowerCase()
+      const roomType = String(r.room_type || '').toLowerCase()
+      const floor = String(r.floor || '').toLowerCase()
+      const status = String(r.status || '').toLowerCase()
+      return roomNo.includes(q) || roomType.includes(q) || floor.includes(q) || status.includes(q)
+    })
+  })()
+
+  const sortedRooms = getSortedRooms(filteredRooms)
+  const totalRoomPages = Math.max(1, Math.ceil(sortedRooms.length / ROOMS_PAGE_SIZE))
+  const currentRoomPage = Math.min(roomPage, totalRoomPages)
+  const pagedRooms = sortedRooms.slice((currentRoomPage - 1) * ROOMS_PAGE_SIZE, currentRoomPage * ROOMS_PAGE_SIZE)
+
+  useEffect(() => {
+    setRoomPage(1)
+  }, [roomSearchTerm])
 
   const handleDeleteAssignment = async (assignmentId) => {
     if (!confirm('Are you sure you want to delete this assignment? All related activity assignments will also be deleted.')) {
@@ -329,7 +490,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('bulkAssignment')}</h1>
           <p className="text-sm text-gray-600 mt-1">
-            {viewMode === 'create' ? `${t('assignRooms')} - Step ${step}/4` : 'Manage existing assignments'}
+            {viewMode === 'create' ? `${t('bulkAssignment')} - Step ${step}/4` : 'Manage existing assignments'}
           </p>
         </div>
         <div className="flex bg-gray-100 rounded-lg p-1">
@@ -467,6 +628,76 @@ export default function BulkAssignment({ user, lang = 'en' }) {
                     </div>
                   </div>
                 ))}
+
+                {existingGeneralAssignments.length > 0 && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <h3 className="text-md font-semibold mb-3">General (No-Room) Assignments</h3>
+                    <div className="space-y-3">
+                      {existingGeneralAssignments.map((ga) => (
+                        <div key={ga.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <Activity className="w-5 h-5 text-blue-600" />
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  {ga.housekeeping_activities?.name || 'Activity'}
+                                </h3>
+                                <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                                  ga.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  ga.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                  ga.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {ga.status}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-2">
+                                <div>
+                                  <span className="font-medium">Type:</span> {ga.assignment_type?.replace(/_/g, ' ')}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Date:</span> {new Date(ga.assignment_date).toLocaleDateString()}
+                                </div>
+                                {ga.shifts && (
+                                  <div>
+                                    <span className="font-medium">Shift:</span> {ga.shifts.name}
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="font-medium">Assigned:</span> {ga.users?.full_name || '—'}
+                                </div>
+                              </div>
+
+                              {ga.notes && (
+                                <div className="mt-1 text-sm text-gray-600 italic">Note: {ga.notes}</div>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2 ml-4">
+                              {ga.status === 'pending' && (
+                                <button
+                                  onClick={() => handleCancelGeneralAssignment(ga.id)}
+                                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                  title="Cancel Assignment"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteGeneralAssignment(ga.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Assignment"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -577,63 +808,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         </div>
       )}
 
-      {/* Step 1: Select Rooms - Only show in create mode */}
+      {/* Step 1: Select Activities - Only show in create mode */}
       {viewMode === 'create' && step === 1 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{t('selectRooms')}</h2>
-            <div className="flex gap-3">
-              <button
-                onClick={selectAllRooms}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                {t('selectAll')}
-              </button>
-              <span className="px-4 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg">
-                {selectedRooms.length} {t('roomsSelected')}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            {rooms.map((room) => (
-              <button
-                key={room.id}
-                onClick={() => toggleRoom(room.id)}
-                className={`p-4 border-2 rounded-lg text-left transition-all ${
-                  selectedRooms.includes(room.id)
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <Home className="w-5 h-5 text-gray-400" />
-                  {selectedRooms.includes(room.id) ? (
-                    <CheckSquare className="w-5 h-5 text-blue-600" />
-                  ) : (
-                    <Square className="w-5 h-5 text-gray-300" />
-                  )}
-                </div>
-                <div className="font-semibold text-lg">{room.room_number}</div>
-                <div className="text-sm text-gray-600">{room.room_type}</div>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => setStep(2)}
-              disabled={selectedRooms.length === 0}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              {t('next')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Select Activities - Only show in create mode */}
-      {viewMode === 'create' && step === 2 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{t('selectActivities')}</h2>
@@ -687,6 +863,133 @@ export default function BulkAssignment({ user, lang = 'en' }) {
             ))}
           </div>
 
+          <div className="flex justify-end">
+            <button
+              onClick={() => setStep(2)}
+              disabled={selectedActivities.length === 0}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {t('next')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Select Rooms (Optional) - Only show in create mode */}
+      {viewMode === 'create' && step === 2 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">{t('selectRooms')} (optional)</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={selectAllRooms}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                {t('selectAll')}
+              </button>
+              <span className="px-4 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg">
+                {selectedRooms.length} {t('roomsSelected')}
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={roomSearchTerm}
+                  onChange={(e) => setRoomSearchTerm(e.target.value)}
+                  placeholder="Search rooms (number, floor, type, status)"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="text-sm text-gray-600 whitespace-nowrap">
+                {sortedRooms.length} rooms
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Select</th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer"
+                      onClick={() => toggleRoomSort('room_number')}
+                    >
+                      Room {roomSort.key === 'room_number' ? (roomSort.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer"
+                      onClick={() => toggleRoomSort('floor')}
+                    >
+                      Floor {roomSort.key === 'floor' ? (roomSort.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer"
+                      onClick={() => toggleRoomSort('room_type')}
+                    >
+                      Type {roomSort.key === 'room_type' ? (roomSort.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer"
+                      onClick={() => toggleRoomSort('status')}
+                    >
+                      Status {roomSort.key === 'status' ? (roomSort.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pagedRooms.map((room) => {
+                    const checked = selectedRooms.includes(room.id)
+                    return (
+                      <tr key={room.id} className={checked ? 'bg-blue-50' : 'bg-white'}>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <button
+                            onClick={() => toggleRoom(room.id)}
+                            className="inline-flex items-center justify-center"
+                            title={checked ? 'Unselect' : 'Select'}
+                          >
+                            {checked ? (
+                              <CheckSquare className="w-5 h-5 text-blue-600" />
+                            ) : (
+                              <Square className="w-5 h-5 text-gray-300" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap font-semibold text-gray-900">{room.room_number}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{room.floor ?? '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{room.room_type ?? '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{room.status ?? '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-600">Page {currentRoomPage} of {totalRoomPages}</div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRoomPage((p) => Math.max(1, p - 1))}
+                  disabled={currentRoomPage <= 1}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Prev
+                </button>
+                <button
+                  onClick={() => setRoomPage((p) => Math.min(totalRoomPages, p + 1))}
+                  disabled={currentRoomPage >= totalRoomPages}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-3 justify-end">
             <button
               onClick={() => setStep(1)}
@@ -696,7 +999,6 @@ export default function BulkAssignment({ user, lang = 'en' }) {
             </button>
             <button
               onClick={() => setStep(3)}
-              disabled={selectedActivities.length === 0}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {t('next')}
@@ -829,7 +1131,9 @@ export default function BulkAssignment({ user, lang = 'en' }) {
                 {selectedRooms.length}
               </div>
               <div className="text-sm text-gray-600">
-                {rooms.filter(r => selectedRooms.includes(r.id)).map(r => r.room_number).join(', ')}
+                {selectedRooms.length === 0
+                  ? 'No rooms selected (general assignment)'
+                  : rooms.filter(r => selectedRooms.includes(r.id)).map(r => r.room_number).join(', ')}
               </div>
             </div>
 
@@ -850,10 +1154,12 @@ export default function BulkAssignment({ user, lang = 'en' }) {
             <div className="bg-white p-6 border border-gray-200 rounded-lg">
               <h3 className="font-medium mb-3">{t('totalAssignments')}</h3>
               <div className="text-3xl font-bold text-purple-600 mb-2">
-                {selectedRooms.length * selectedActivities.length}
+                {selectedRooms.length === 0 ? selectedActivities.length : selectedRooms.length * selectedActivities.length}
               </div>
               <div className="text-sm text-gray-600">
-                {selectedRooms.length} {t('rooms')} × {selectedActivities.length} {t('activities')}
+                {selectedRooms.length === 0
+                  ? `${selectedActivities.length} ${t('activities')}`
+                  : `${selectedRooms.length} ${t('rooms')} × ${selectedActivities.length} ${t('activities')}`}
               </div>
             </div>
           </div>
