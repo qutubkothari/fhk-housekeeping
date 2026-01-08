@@ -236,13 +236,26 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
                 </button>
                 
                 <span className={`px-4 py-2 rounded-full text-xs font-semibold ${
-                  user.role === 'super_admin' ? 'bg-indigo-100 text-indigo-700' :
+                  (user.role === 'super_admin' || user.role === 'admin') ? 'bg-indigo-100 text-indigo-700' :
                   user.role === 'inventory' ? 'bg-green-100 text-green-700' :
+                  user.role === 'staff' ? 'bg-blue-100 text-blue-700' :
                   'bg-pink-100 text-pink-700'
                 }`}>
-                  {user.role === 'super_admin' ? (lang === 'ar' ? 'مدير' : 'Administrator') : 
-                   user.role === 'inventory' ? (lang === 'ar' ? 'مدير المخزون' : 'Inventory Manager') : 
-                   (lang === 'ar' ? 'مدير الغسيل' : 'Laundry Manager')}
+                  {user.role === 'super_admin' || user.role === 'admin'
+                    ? (lang === 'ar' ? 'مدير' : 'Administrator')
+                    : user.role === 'supervisor'
+                      ? (lang === 'ar' ? 'مشرف' : 'Supervisor')
+                      : user.role === 'inventory'
+                        ? (lang === 'ar' ? 'مدير المخزون' : 'Inventory Manager')
+                        : user.role === 'laundry'
+                          ? (lang === 'ar' ? 'مدير الغسيل' : 'Laundry Manager')
+                          : user.role === 'maintenance'
+                            ? (lang === 'ar' ? 'صيانة' : 'Maintenance')
+                            : user.role === 'front_desk'
+                              ? (lang === 'ar' ? 'الاستقبال' : 'Front Desk')
+                              : user.role === 'staff'
+                                ? (lang === 'ar' ? 'تدبير منزلي' : 'Housekeeping')
+                                : (user.role || '')}
                 </span>
               </div>
             </div>
