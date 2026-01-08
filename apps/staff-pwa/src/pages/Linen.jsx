@@ -42,6 +42,24 @@ export default function Linen({ user, lang = 'en' }) {
   const [bulkReturnItems, setBulkReturnItems] = useState([])
   const [selectedRooms, setSelectedRooms] = useState([])
 
+  const toggleRoomSelection = (roomId) => {
+    setSelectedRooms((prev) => (prev.includes(roomId) ? prev.filter((id) => id !== roomId) : [...prev, roomId]))
+  }
+
+  const initBulkReturnItems = () => {
+    const items = linens.map((linen) => ({
+      id: linen.id,
+      name: linen.item_name_en,
+      nameAr: linen.item_name_ar,
+      type: linen.linen_type,
+      size: linen.size,
+      quantity: 0,
+      cleanStock: linen.clean_stock,
+      soiledStock: linen.soiled_stock
+    }))
+    setBulkReturnItems(items)
+  }
+
   useEffect(() => {
     console.log('🟣 Linen v3.0 - WITH TRANSACTIONS')
     if (user?.org_id) {
@@ -222,18 +240,7 @@ export default function Linen({ user, lang = 'en' }) {
 
   const handleRoomSelect = (roomIds) => {
     setSelectedRooms(roomIds)
-    // Initialize bulk return items with all linen items
-    const items = linens.map(linen => ({
-      id: linen.id,
-      name: linen.item_name_en,
-      nameAr: linen.item_name_ar,
-      type: linen.linen_type,
-      size: linen.size,
-      quantity: 0,
-      cleanStock: linen.clean_stock,
-      soiledStock: linen.soiled_stock
-    }))
-    setBulkReturnItems(items)
+    if (roomIds.length > 0 && bulkReturnItems.length === 0) initBulkReturnItems()
   }
 
   const updateBulkItemQuantity = (itemId, quantity) => {
@@ -343,6 +350,15 @@ export default function Linen({ user, lang = 'en' }) {
       if (!item) throw new Error('Linen item not found')
 
       const quantity = parseInt(transactionData.quantity)
+      const needsRoom = transactionTypes.find(t => t.value === transactionData.transaction_type)?.needsRoom
+      const roomIds = needsRoom ? selectedRooms : []
+
+      if (needsRoom && roomIds.length === 0) {
+        alert('Please select at least one room')
+        return
+      }
+
+      const totalQuantity = needsRoom ? quantity * roomIds.length : quantity
       let newClean = item.clean_stock || 0
       let newSoiled = item.soiled_stock || 0
       let newLaundry = item.in_laundry || 0
@@ -350,61 +366,63 @@ export default function Linen({ user, lang = 'en' }) {
       // Calculate new stock based on transaction type
       switch (transactionData.transaction_type) {
         case 'issue_clean':
-          if (newClean < quantity) {
+          if (newClean < totalQuantity) {
             alert('Not enough clean stock')
             return
           }
-          newClean -= quantity
+          newClean -= totalQuantity
           break
         case 'return_soiled':
-          newSoiled += quantity
+          newSoiled += totalQuantity
           break
         case 'send_laundry':
-          if (newSoiled < quantity) {
+          if (newSoiled < totalQuantity) {
             alert('Not enough soiled stock')
             return
           }
-          newSoiled -= quantity
-          newLaundry += quantity
+          newSoiled -= totalQuantity
+          newLaundry += totalQuantity
           break
         case 'receive_laundry':
-          if (newLaundry < quantity) {
+          if (newLaundry < totalQuantity) {
             alert('Not enough items in laundry')
             return
           }
-          newLaundry -= quantity
-          newClean += quantity
+          newLaundry -= totalQuantity
+          newClean += totalQuantity
           break
         case 'mark_damaged':
           // Mark as damaged by reducing total stock
-          if (newClean >= quantity) {
-            newClean -= quantity
-          } else if (newSoiled >= quantity) {
-            newSoiled -= quantity
+          if (newClean >= totalQuantity) {
+            newClean -= totalQuantity
+          } else if (newSoiled >= totalQuantity) {
+            newSoiled -= totalQuantity
           } else {
             alert('Not enough stock to mark as damaged')
             return
           }
           break
         case 'purchase':
-          newClean += quantity
+          newClean += totalQuantity
           break
       }
 
       const newTotal = newClean + newSoiled + newLaundry
 
-      // Insert transaction
+      // Insert transaction(s)
+      const rowsToInsert = (needsRoom ? roomIds : [null]).map((roomId) => ({
+        org_id: user.org_id,
+        linen_id: item.id,
+        transaction_type: transactionData.transaction_type,
+        quantity: quantity,
+        room_id: roomId,
+        notes: transactionData.notes,
+        created_by: user.id
+      }))
+
       const { error: transError } = await supabase
         .from('linen_transactions')
-        .insert([{
-          org_id: user.org_id,
-          linen_id: item.id,
-          transaction_type: transactionData.transaction_type,
-          quantity: quantity,
-          room_id: transactionData.room_id || null,
-          notes: transactionData.notes,
-          created_by: user.id
-        }])
+        .insert(rowsToInsert)
 
       if (transError) throw transError
 
@@ -428,6 +446,8 @@ export default function Linen({ user, lang = 'en' }) {
         room_id: '',
         notes: ''
       })
+
+      setSelectedRooms([])
       
       setShowTransactionModal(false)
       loadData()
@@ -1269,38 +1289,26 @@ export default function Linen({ user, lang = 'en' }) {
                 <>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Select Rooms *</label>
-                    <Select
-                      value={selectedRooms
-                        .map((id) => rooms.find((r) => r.id === id))
-                        .filter(Boolean)
-                        .map((room) => ({
-                          value: room.id,
-                          label: `${room.room_number} - ${room.room_type} (Floor ${room.floor})`
-                        }))}
-                      onChange={(options) => handleRoomSelect((options || []).map((o) => o.value))}
-                      options={rooms.map(room => ({
-                        value: room.id,
-                        label: `${room.room_number} - ${room.room_type} (Floor ${room.floor})`
-                      }))}
-                      placeholder="Select room..."
-                      isMulti
-                      isClearable
-                      isSearchable
-                      className="react-select-container"
-                      classNamePrefix="react-select"
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          minHeight: '42px',
-                          borderRadius: '0.5rem',
-                          borderWidth: '2px',
-                          borderColor: '#e5e7eb',
-                          '&:hover': { borderColor: '#ec4899' },
-                          '&:focus': { borderColor: '#ec4899', boxShadow: '0 0 0 1px #ec4899' }
-                        })
-                      }}
-                      required
-                    />
+                    <div className="border-2 border-gray-200 rounded-lg p-3 max-h-56 overflow-y-auto">
+                      {rooms.map((room) => (
+                        <label key={room.id} className="flex items-center gap-3 py-2 px-2 rounded hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={selectedRooms.includes(room.id)}
+                            onChange={() => {
+                              const next = selectedRooms.includes(room.id)
+                                ? selectedRooms.filter((id) => id !== room.id)
+                                : [...selectedRooms, room.id]
+                              handleRoomSelect(next)
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-sm text-gray-900">
+                            {room.room_number} - {room.room_type} (Floor {room.floor})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   {selectedRooms.length > 0 && bulkReturnItems.length > 0 && (
@@ -1407,34 +1415,21 @@ export default function Linen({ user, lang = 'en' }) {
               {transactionTypes.find(t => t.value === transactionData.transaction_type)?.needsRoom && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Room *</label>
-                  <Select
-                    value={rooms.find(r => r.id === transactionData.room_id) ? {
-                      value: transactionData.room_id,
-                      label: `${rooms.find(r => r.id === transactionData.room_id).room_number} - ${rooms.find(r => r.id === transactionData.room_id).room_type}`
-                    } : null}
-                    onChange={(option) => setTransactionData({ ...transactionData, room_id: option?.value || '' })}
-                    options={rooms.map(room => ({
-                      value: room.id,
-                      label: `${room.room_number} - ${room.room_type}`
-                    }))}
-                    placeholder="Select room"
-                    isClearable
-                    isSearchable
-                    className="react-select-container"
-                    classNamePrefix="react-select"
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        minHeight: '42px',
-                        borderRadius: '0.5rem',
-                        borderWidth: '2px',
-                        borderColor: '#e5e7eb',
-                        '&:hover': { borderColor: '#ec4899' },
-                        '&:focus': { borderColor: '#ec4899', boxShadow: '0 0 0 1px #ec4899' }
-                      })
-                    }}
-                    required
-                  />
+                  <div className="border-2 border-gray-200 rounded-lg p-3 max-h-56 overflow-y-auto">
+                    {rooms.map((room) => (
+                      <label key={room.id} className="flex items-center gap-3 py-2 px-2 rounded hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={selectedRooms.includes(room.id)}
+                          onChange={() => toggleRoomSelection(room.id)}
+                          className="h-4 w-4"
+                        />
+                        <span className="text-sm text-gray-900">
+                          {room.room_number} - {room.room_type} (Floor {room.floor})
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
 
