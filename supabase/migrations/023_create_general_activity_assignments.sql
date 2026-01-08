@@ -40,23 +40,16 @@ GRANT ALL ON TABLE public.general_activity_assignments TO authenticated;
 GRANT ALL ON TABLE public.general_activity_assignments TO service_role;
 
 -- updated_at trigger (idempotent)
-DO $$
+-- Use CREATE OR REPLACE so this can be rerun safely.
+CREATE OR REPLACE FUNCTION public.set_updated_at_timestamp()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $func$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc WHERE proname = 'set_updated_at_timestamp'
-  ) THEN
-    CREATE OR REPLACE FUNCTION public.set_updated_at_timestamp()
-    RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-      NEW.updated_at = now();
-      RETURN NEW;
-    END;
-    $$;
-  END IF;
+  NEW.updated_at = now();
+  RETURN NEW;
 END;
-$$;
+$func$;
 
 DROP TRIGGER IF EXISTS trg_general_activity_assignments_updated_at ON public.general_activity_assignments;
 CREATE TRIGGER trg_general_activity_assignments_updated_at
