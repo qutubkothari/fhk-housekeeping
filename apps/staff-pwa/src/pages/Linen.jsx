@@ -1233,8 +1233,8 @@ export default function Linen({ user, lang = 'en' }) {
                   value={transactionTypes.find(t => t.value === transactionData.transaction_type)}
                   onChange={(option) => {
                     setTransactionData({ ...transactionData, transaction_type: option?.value || '' })
-                    // Enable bulk return mode for return_soiled if user is staff
-                    if (option?.value === 'return_soiled' && user?.role === 'staff') {
+                    // Enable bulk return mode for return_soiled if user is housekeeping
+                    if (option?.value === 'return_soiled' && (user?.role === 'staff' || user?.role === 'housekeeping')) {
                       setBulkReturnMode(true)
                     } else {
                       setBulkReturnMode(false)

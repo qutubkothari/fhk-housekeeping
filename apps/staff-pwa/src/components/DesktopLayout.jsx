@@ -238,7 +238,7 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
                 <span className={`px-4 py-2 rounded-full text-xs font-semibold ${
                   (user.role === 'super_admin' || user.role === 'admin') ? 'bg-indigo-100 text-indigo-700' :
                   user.role === 'inventory' ? 'bg-green-100 text-green-700' :
-                  user.role === 'staff' ? 'bg-blue-100 text-blue-700' :
+                  (user.role === 'staff' || user.role === 'housekeeping') ? 'bg-blue-100 text-blue-700' :
                   'bg-pink-100 text-pink-700'
                 }`}>
                   {user.role === 'super_admin' || user.role === 'admin'
@@ -255,6 +255,8 @@ const DesktopLayout = ({ user, children, currentPage, onNavigate, onSignOut, lan
                               ? (lang === 'ar' ? 'الاستقبال' : 'Front Desk')
                               : user.role === 'staff'
                                 ? (lang === 'ar' ? 'تدبير منزلي' : 'Housekeeping')
+                                : user.role === 'housekeeping'
+                                  ? (lang === 'ar' ? 'تدبير منزلي' : 'Housekeeping')
                                 : (user.role || '')}
                 </span>
               </div>

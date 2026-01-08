@@ -66,7 +66,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
           .select('*')
           .eq('org_id', orgId)
           .eq('is_active', true)
-          .in('role', ['staff', 'supervisor']),
+            .in('role', ['staff', 'housekeeping', 'supervisor']),
         supabase
           .from('shifts')
           .select('*')

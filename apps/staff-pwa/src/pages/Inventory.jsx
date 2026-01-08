@@ -61,7 +61,7 @@ export default function Inventory({ user, lang = 'en' }) {
         .from('users')
         .select('*')
         .eq('org_id', user.org_id)
-        .in('role', ['staff', 'maintenance', 'laundry', 'inventory'])
+        .in('role', ['staff', 'housekeeping', 'maintenance', 'laundry', 'inventory'])
         .eq('is_active', true)
         .order('full_name')
 

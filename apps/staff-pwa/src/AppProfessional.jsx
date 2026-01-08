@@ -353,7 +353,7 @@ function App() {
   // Supervisor functions
   const loadStaffPerformance = async () => {
     try {
-      const staff = await api(`users?org_id=eq.${user.org_id}&role=in.("staff","maintenance")&select=*`)
+      const staff = await api(`users?org_id=eq.${user.org_id}&role=in.("staff","housekeeping","maintenance")&select=*`)
       setStaffList(staff)
       
       // Mock performance data - in real app, calculate from work_sessions
@@ -793,7 +793,7 @@ function App() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                {user.role === 'staff' ? 'FHK Housekeeping' :
+                {(user.role === 'staff' || user.role === 'housekeeping') ? 'FHK Housekeeping' :
                  user.role === 'maintenance' ? 'FHK Maintenance' :
                  user.role === 'supervisor' ? 'FHK Supervisor' :
                  user.role === 'front_desk' ? 'FHK Front Desk' :
@@ -817,7 +817,7 @@ function App() {
               </button>
               
               <span className={`px-3 py-1 text-xs font-medium rounded-full capitalize ${
-                user.role === 'staff' ? 'bg-blue-100 text-blue-700' :
+                (user.role === 'staff' || user.role === 'housekeeping') ? 'bg-blue-100 text-blue-700' :
                 user.role === 'maintenance' ? 'bg-orange-100 text-orange-700' :
                 user.role === 'supervisor' ? 'bg-purple-100 text-purple-700' :
                 user.role === 'front_desk' ? 'bg-teal-100 text-teal-700' :
@@ -877,7 +877,7 @@ function App() {
       {/* Main Content */}
       <main className="px-4 py-6 pb-24">
         {/* Staff (Housekeeping) - New flow: activity-based assignments */}
-        {user.role === 'staff' && page === 'rooms' && (
+        {(user.role === 'staff' || user.role === 'housekeeping') && page === 'rooms' && (
           <div className="max-w-4xl mx-auto">
             <ReturnSoiledLinenMobile lang={lang} user={user} />
             <ActivityTasks lang={lang} user={user} />

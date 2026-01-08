@@ -10,6 +10,7 @@ export default function Staff({ user, lang = 'en' }) {
 
   const getSystemRoleLabel = (role) => {
     if (role === 'staff') return 'Housekeeping'
+    if (role === 'housekeeping') return 'Housekeeping'
     return String(role)
       .replace('_', ' ')
       .split(' ')
@@ -33,7 +34,7 @@ export default function Staff({ user, lang = 'en' }) {
     full_name: '',
     email: '',
     phone: '',
-    role: 'staff',
+    role: 'housekeeping',
     is_active: true,
     location_id: null,
     shift_id: null,
@@ -41,7 +42,7 @@ export default function Staff({ user, lang = 'en' }) {
   const [selectedOperationalActivities, setSelectedOperationalActivities] = useState([]) // array of activity_id
 
   // System permission roles (used for access control + routing)
-  const systemRoles = ['super_admin', 'admin', 'supervisor', 'staff', 'maintenance', 'front_desk', 'inventory', 'laundry']
+  const systemRoles = ['super_admin', 'admin', 'supervisor', 'housekeeping', 'staff', 'maintenance', 'front_desk', 'inventory', 'laundry']
 
   useEffect(() => {
     if (user?.org_id) {
@@ -124,7 +125,7 @@ export default function Staff({ user, lang = 'en' }) {
       full_name: '',
       email: '',
       phone: '',
-      role: 'staff',
+      role: 'housekeeping',
       is_active: true,
       location_id: null,
       shift_id: null,
@@ -253,13 +254,14 @@ export default function Staff({ user, lang = 'en' }) {
       admin: 'bg-red-100 text-red-700 border-red-200',
       supervisor: 'bg-purple-100 text-purple-700 border-purple-200',
       staff: 'bg-blue-100 text-blue-700 border-blue-200',
+      housekeeping: 'bg-blue-100 text-blue-700 border-blue-200',
       maintenance: 'bg-orange-100 text-orange-700 border-orange-200',
       front_desk: 'bg-teal-100 text-teal-700 border-teal-200',
     }
     return badges[role] || 'bg-gray-100 text-gray-700 border-gray-200'
   }
 
-  const getSystemRoleDisplay = (role) => (role === 'staff' ? 'Housekeeping' : String(role).replace('_', ' '))
+  const getSystemRoleDisplay = (role) => ((role === 'staff' || role === 'housekeeping') ? 'Housekeeping' : String(role).replace('_', ' '))
 
   const filteredStaff = staff.filter(member => {
     const matchesSearch = member.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -273,7 +275,7 @@ export default function Staff({ user, lang = 'en' }) {
   const stats = {
     total: staff.length,
     active: staff.filter(s => s.is_active).length,
-    staff: staff.filter(s => s.role === 'staff').length,
+    staff: staff.filter(s => (s.role === 'staff' || s.role === 'housekeeping')).length,
     supervisors: staff.filter(s => s.role === 'supervisor').length,
   }
 

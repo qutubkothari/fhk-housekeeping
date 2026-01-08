@@ -106,7 +106,7 @@ export default function StaffAssignments({ user }) {
         .from('users')
         .select('*')
         .eq('org_id', user.org_id)
-        .in('role', ['staff', 'supervisor', 'maintenance'])
+        .in('role', ['staff', 'housekeeping', 'supervisor', 'maintenance'])
         .eq('is_active', true)
         .order('full_name')
 
