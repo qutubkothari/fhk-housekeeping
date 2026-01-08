@@ -536,8 +536,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         <div className="space-y-4">
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h2 className="text-lg font-semibold mb-4">Existing Assignments</h2>
-            
-            {existingAssignments.length === 0 ? (
+
+            {existingAssignments.length === 0 && existingGeneralAssignments.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No assignments found</p>
@@ -545,101 +545,105 @@ export default function BulkAssignment({ user, lang = 'en' }) {
               </div>
             ) : (
               <div className="space-y-4">
-                {existingAssignments.map(assignment => (
-                  <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Home className="w-5 h-5 text-blue-600" />
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            Room {assignment.rooms?.room_number}
-                          </h3>
-                          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                            assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            assignment.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                            assignment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {assignment.status}
-                          </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
-                          <div>
-                            <span className="font-medium">Type:</span> {assignment.assignment_type?.replace(/_/g, ' ')}
-                          </div>
-                          <div>
-                            <span className="font-medium">Date:</span> {new Date(assignment.assignment_date).toLocaleDateString()}
-                          </div>
-                          {assignment.shifts && (
-                            <div>
-                              <span className="font-medium">Shift:</span> {assignment.shifts.name}
+                {existingAssignments.length > 0 && (
+                  <div className="space-y-4">
+                    {existingAssignments.map(assignment => (
+                      <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <Home className="w-5 h-5 text-blue-600" />
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                Room {assignment.rooms?.room_number}
+                              </h3>
+                              <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                                assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                assignment.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                assignment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {assignment.status}
+                              </span>
                             </div>
-                          )}
-                          <div>
-                            <span className="font-medium">Completion:</span> {assignment.completion_percentage || 0}%
-                          </div>
-                        </div>
 
-                        {assignment.activity_assignments && assignment.activity_assignments.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-sm font-medium text-gray-700 mb-2">Activities ({assignment.activity_assignments.length}):</p>
-                            <div className="flex flex-wrap gap-2">
-                              {assignment.activity_assignments.map(aa => (
-                                <div key={aa.id} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-sm">
-                                  <Activity className="w-4 h-4 text-gray-400" />
-                                  <span>{aa.housekeeping_activities?.name}</span>
-                                  <span className="text-gray-400">→</span>
-                                  <User className="w-4 h-4 text-blue-500" />
-                                  <span className="font-medium">{aa.users?.full_name}</span>
-                                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                                    aa.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                    aa.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {aa.status}
-                                  </span>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                              <div>
+                                <span className="font-medium">Type:</span> {assignment.assignment_type?.replace(/_/g, ' ')}
+                              </div>
+                              <div>
+                                <span className="font-medium">Date:</span> {new Date(assignment.assignment_date).toLocaleDateString()}
+                              </div>
+                              {assignment.shifts && (
+                                <div>
+                                  <span className="font-medium">Shift:</span> {assignment.shifts.name}
                                 </div>
-                              ))}
+                              )}
+                              <div>
+                                <span className="font-medium">Completion:</span> {assignment.completion_percentage || 0}%
+                              </div>
                             </div>
-                          </div>
-                        )}
 
-                        {assignment.notes && (
-                          <div className="mt-2 text-sm text-gray-600 italic">
-                            Note: {assignment.notes}
-                          </div>
-                        )}
-                      </div>
+                            {assignment.activity_assignments && assignment.activity_assignments.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                <p className="text-sm font-medium text-gray-700 mb-2">Activities ({assignment.activity_assignments.length}):</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {assignment.activity_assignments.map(aa => (
+                                    <div key={aa.id} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg text-sm">
+                                      <Activity className="w-4 h-4 text-gray-400" />
+                                      <span>{aa.housekeeping_activities?.name}</span>
+                                      <span className="text-gray-400">→</span>
+                                      <User className="w-4 h-4 text-blue-500" />
+                                      <span className="font-medium">{aa.users?.full_name}</span>
+                                      <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                                        aa.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                        aa.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                                        'bg-gray-100 text-gray-700'
+                                      }`}>
+                                        {aa.status}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
-                      <div className="flex gap-2 ml-4">
-                        {assignment.status === 'pending' && (
-                          <button
-                            onClick={() => handleCancelAssignment(assignment.id)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Cancel Assignment"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openEditAssignment(assignment)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit Assignment"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAssignment(assignment.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete Assignment"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                            {assignment.notes && (
+                              <div className="mt-2 text-sm text-gray-600 italic">
+                                Note: {assignment.notes}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 ml-4">
+                            {assignment.status === 'pending' && (
+                              <button
+                                onClick={() => handleCancelAssignment(assignment.id)}
+                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                title="Cancel Assignment"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openEditAssignment(assignment)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit Assignment"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAssignment(assignment.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Assignment"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
 
                 {existingGeneralAssignments.length > 0 && (
                   <div className="pt-4 border-t border-gray-200">
