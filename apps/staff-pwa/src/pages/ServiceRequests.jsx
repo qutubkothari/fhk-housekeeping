@@ -64,10 +64,12 @@ export default function ServiceRequests({ user, lang = 'en' }) {
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true)
     try {
+      // Fetch requests that are either created by this user OR assigned to this user
       const { data, error } = await supabase
         .from('service_requests')
         .select('*, rooms(room_number, floor)')
         .eq('org_id', user.org_id)
+        .or(`reported_by.eq.${user.id},assigned_to.eq.${user.id}`)
         .order('created_at', { ascending: false })
 
       if (error) throw error

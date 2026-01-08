@@ -19,6 +19,7 @@ import ActivityMaster from './pages/ActivityMaster'
 import BulkAssignment from './pages/BulkAssignment'
 import LocationMaster from './pages/LocationMaster'
 import ShiftMaster from './pages/ShiftMaster'
+import JobRoleMaster from './pages/JobRoleMaster'
 import VendorManagement from './pages/VendorManagement'
 import Procurement from './pages/Procurement'
 import { translations } from './translations'
@@ -768,10 +769,11 @@ function App() {
         {currentPage === 'bulk-assignment' && (hasAccess('bulk-assignment') ? <BulkAssignment user={user} lang={lang} /> : <AccessDenied />)}
         {currentPage === 'location-master' && (hasAccess('location-master') ? <LocationMaster user={user} lang={lang} /> : <AccessDenied />)}
         {currentPage === 'shift-master' && (hasAccess('shift-master') ? <ShiftMaster user={user} lang={lang} /> : <AccessDenied />)}
+        {currentPage === 'job-role-master' && (hasAccess('job-role-master') ? <JobRoleMaster user={user} lang={lang} /> : <AccessDenied />)}
         {currentPage === 'vendor-management' && (hasAccess('vendor-management') ? <VendorManagement user={user} lang={lang} /> : <AccessDenied />)}
         {currentPage === 'procurement' && (hasAccess('procurement') ? <Procurement user={user} lang={lang} /> : <AccessDenied />)}
         {currentPage === 'settings' && (hasAccess('settings') ? <SettingsPage user={user} lang={lang} /> : <AccessDenied />)}
-        {!['dashboard', 'rooms', 'housekeeping', 'maintenance', 'staff', 'inventory', 'linen', 'reports', 'realtime', 'assignments', 'analytics', 'activity-master', 'bulk-assignment', 'location-master', 'vendor-management', 'procurement', 'settings'].includes(currentPage) && (
+        {!['dashboard', 'rooms', 'housekeeping', 'maintenance', 'staff', 'inventory', 'linen', 'reports', 'realtime', 'assignments', 'analytics', 'activity-master', 'bulk-assignment', 'location-master', 'shift-master', 'job-role-master', 'vendor-management', 'procurement', 'settings'].includes(currentPage) && (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="text-6xl mb-4">🚧</div>

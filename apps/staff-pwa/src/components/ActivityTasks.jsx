@@ -398,6 +398,117 @@ export default function ActivityTasks({ lang, user }) {
             </div>
           )}
         </div>
+
+        {/* Maintenance Request Modal */}
+        {showMaintenanceModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-600 to-orange-700 p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold">{lang === 'ar' ? 'الإبلاغ عن صيانة' : 'Report Maintenance'}</h3>
+                    <p className="text-orange-100 text-sm mt-1">
+                      {t('room')} {selectedRoom.rooms.room_number}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowMaintenanceModal(false)}
+                    className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {lang === 'ar' ? 'الفئة' : 'Category'} *
+                  </label>
+                  <select
+                    value={maintenanceData.category}
+                    onChange={(e) => setMaintenanceData({ ...maintenanceData, category: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  >
+                    <option value="general">{lang === 'ar' ? 'عام' : 'General'}</option>
+                    <option value="plumbing">{lang === 'ar' ? 'سباكة' : 'Plumbing'}</option>
+                    <option value="electrical">{lang === 'ar' ? 'كهرباء' : 'Electrical'}</option>
+                    <option value="hvac">{lang === 'ar' ? 'تكييف' : 'HVAC/AC'}</option>
+                    <option value="furniture">{lang === 'ar' ? 'أثاث' : 'Furniture'}</option>
+                    <option value="appliance">{lang === 'ar' ? 'أجهزة' : 'Appliance'}</option>
+                    <option value="safety">{lang === 'ar' ? 'سلامة' : 'Safety'}</option>
+                    <option value="other">{lang === 'ar' ? 'أخرى' : 'Other'}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {lang === 'ar' ? 'العنوان' : 'Title'} *
+                  </label>
+                  <input
+                    type="text"
+                    value={maintenanceData.title}
+                    onChange={(e) => setMaintenanceData({ ...maintenanceData, title: e.target.value })}
+                    placeholder={lang === 'ar' ? 'مثال: تسريب في الحمام' : 'e.g., Leaking faucet in bathroom'}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {lang === 'ar' ? 'الوصف' : 'Description'} *
+                  </label>
+                  <textarea
+                    value={maintenanceData.description}
+                    onChange={(e) => setMaintenanceData({ ...maintenanceData, description: e.target.value })}
+                    placeholder={lang === 'ar' ? 'اوصف المشكلة بالتفصيل...' : 'Describe the issue in detail...'}
+                    rows={4}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {lang === 'ar' ? 'الأولوية' : 'Priority'}
+                  </label>
+                  <div className="flex gap-3">
+                    {['low', 'normal', 'high', 'urgent'].map((priority) => (
+                      <button
+                        key={priority}
+                        type="button"
+                        onClick={() => setMaintenanceData({ ...maintenanceData, priority })}
+                        className={`flex-1 py-2 rounded-lg border-2 font-semibold capitalize transition-colors ${
+                          maintenanceData.priority === priority
+                            ? 'bg-orange-600 text-white border-orange-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
+                        }`}
+                      >
+                        {lang === 'ar' 
+                          ? (priority === 'low' ? 'منخفض' : priority === 'normal' ? 'عادي' : priority === 'high' ? 'عالي' : 'عاجل')
+                          : priority}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 p-6 flex gap-3">
+                <button
+                  onClick={() => setShowMaintenanceModal(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  onClick={submitMaintenanceRequest}
+                  className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  {lang === 'ar' ? 'إرسال' : 'Submit'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -496,116 +607,6 @@ export default function ActivityTasks({ lang, user }) {
           )
         })}
       </div>
-
-      {/* Maintenance Request Modal */}
-      {showMaintenanceModal && selectedRoom && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
-            <div className="bg-gradient-to-r from-orange-600 to-orange-700 p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold">{lang === 'ar' ? 'الإبلاغ عن صيانة' : 'Report Maintenance'}</h3>
-                  <p className="text-orange-100 text-sm mt-1">
-                    {t('room')} {selectedRoom.rooms.room_number}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowMaintenanceModal(false)}
-                  className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {lang === 'ar' ? 'الفئة' : 'Category'} *
-                </label>
-                <select
-                  value={maintenanceData.category}
-                  onChange={(e) => setMaintenanceData({ ...maintenanceData, category: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                >
-                  <option value="general">{lang === 'ar' ? 'عام' : 'General'}</option>
-                  <option value="plumbing">{lang === 'ar' ? 'سباكة' : 'Plumbing'}</option>
-                  <option value="electrical">{lang === 'ar' ? 'كهرباء' : 'Electrical'}</option>
-                  <option value="hvac">{lang === 'ar' ? 'تكييف' : 'HVAC/AC'}</option>
-                  <option value="furniture">{lang === 'ar' ? 'أثاث' : 'Furniture'}</option>
-                  <option value="appliance">{lang === 'ar' ? 'أجهزة' : 'Appliance'}</option>
-                  <option value="safety">{lang === 'ar' ? 'سلامة' : 'Safety'}</option>
-                  <option value="other">{lang === 'ar' ? 'أخرى' : 'Other'}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {lang === 'ar' ? 'العنوان' : 'Title'} *
-                </label>
-                <input
-                  type="text"
-                  value={maintenanceData.title}
-                  onChange={(e) => setMaintenanceData({ ...maintenanceData, title: e.target.value })}
-                  placeholder={lang === 'ar' ? 'مثال: تسريب في الحمام' : 'e.g., Leaking faucet in bathroom'}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {lang === 'ar' ? 'الوصف' : 'Description'} *
-                </label>
-                <textarea
-                  value={maintenanceData.description}
-                  onChange={(e) => setMaintenanceData({ ...maintenanceData, description: e.target.value })}
-                  placeholder={lang === 'ar' ? 'اوصف المشكلة بالتفصيل...' : 'Describe the issue in detail...'}
-                  rows={4}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {lang === 'ar' ? 'الأولوية' : 'Priority'}
-                </label>
-                <div className="flex gap-3">
-                  {['low', 'normal', 'high', 'urgent'].map((priority) => (
-                    <button
-                      key={priority}
-                      type="button"
-                      onClick={() => setMaintenanceData({ ...maintenanceData, priority })}
-                      className={`flex-1 py-2 rounded-lg border-2 font-semibold capitalize transition-colors ${
-                        maintenanceData.priority === priority
-                          ? 'bg-orange-600 text-white border-orange-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400'
-                      }`}
-                    >
-                      {lang === 'ar' 
-                        ? (priority === 'low' ? 'منخفض' : priority === 'normal' ? 'عادي' : priority === 'high' ? 'عالي' : 'عاجل')
-                        : priority}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 p-6 flex gap-3">
-              <button
-                onClick={() => setShowMaintenanceModal(false)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold transition-colors"
-              >
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </button>
-              <button
-                onClick={submitMaintenanceRequest}
-                className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all"
-              >
-                {lang === 'ar' ? 'إرسال' : 'Submit'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}    </div>
+    </div>
   )
 }
