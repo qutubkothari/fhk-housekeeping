@@ -11,6 +11,16 @@ export default function BulkAssignment({ user, lang = 'en' }) {
   const t = (key) => translations[key]?.[lang] || key
   const orgId = user?.org_id
 
+  const normalizeTimeOnly = (value) => {
+    if (!value) return null
+    const raw = String(value)
+    // Support legacy datetime-local values like "2026-01-08T22:56"
+    const timePart = raw.includes('T') ? raw.split('T')[1] : raw
+    // Accept HH:MM or HH:MM:SS; store HH:MM
+    if (/^\d{2}:\d{2}/.test(timePart)) return timePart.slice(0, 5)
+    return timePart
+  }
+
   const [step, setStep] = useState(1) // 1: Select Activities, 2: Select Rooms (optional), 3: Assign Staff, 4: Review
   const [viewMode, setViewMode] = useState('create') // 'create' or 'manage'
   const [rooms, setRooms] = useState([])
@@ -164,6 +174,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         return
       }
 
+      const normalizedTargetTime = normalizeTimeOnly(assignmentData.target_completion_time)
+
       const selectedActivityAssignments = selectedActivities
         .map((activityId) => ({ activityId, staffId: activityStaffMap[activityId] }))
         .filter((x) => x.staffId)
@@ -182,7 +194,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
           assigned_by: user.id,
           assignment_type: assignmentData.assignment_type,
           shift_id: assignmentData.shift_id,
-          target_completion_time: assignmentData.target_completion_time || null,
+          target_completion_time: normalizedTargetTime,
           notes: assignmentData.notes,
         }))
 
@@ -222,7 +234,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         assignment_type: assignmentData.assignment_type,
         assigned_by: user.id,
         shift_id: assignmentData.shift_id,
-        target_completion_time: assignmentData.target_completion_time || null,
+        target_completion_time: normalizedTargetTime,
         notes: assignmentData.notes
       }))
 
@@ -1054,8 +1066,8 @@ export default function BulkAssignment({ user, lang = 'en' }) {
                 {t('targetTime')}
               </label>
               <input
-                type="datetime-local"
-                value={assignmentData.target_completion_time}
+                type="time"
+                value={normalizeTimeOnly(assignmentData.target_completion_time) || ''}
                 onChange={(e) => setAssignmentData({ ...assignmentData, target_completion_time: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />

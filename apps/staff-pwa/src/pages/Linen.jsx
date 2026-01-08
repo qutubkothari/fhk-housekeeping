@@ -1464,7 +1464,7 @@ export default function Linen({ user, lang = 'en' }) {
                   onClick={() => {
                     setShowTransactionModal(false)
                     setBulkReturnMode(false)
-                    setSelectedRoom(null)
+                    setSelectedRooms([])
                     setBulkReturnItems([])
                     setTransactionData({
                       linen_item_id: '',
