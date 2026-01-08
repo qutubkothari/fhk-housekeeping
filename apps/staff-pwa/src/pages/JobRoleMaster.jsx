@@ -194,10 +194,10 @@ export default function JobRoleMaster({ user, lang = 'en' }) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {lang === 'ar' ? 'إدارة الوظائف' : 'Job Role Master'}
+              {lang === 'ar' ? 'إدارة أدوار النظام' : 'System Role Master'}
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              {lang === 'ar' ? 'إدارة أدوار الوظائف والأقسام' : 'Manage job roles and departments'}
+              {lang === 'ar' ? 'إدارة أدوار وصلاحيات النظام' : 'Manage system roles and permissions'}
             </p>
           </div>
           <div className="flex items-center gap-3">

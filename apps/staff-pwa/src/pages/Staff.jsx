@@ -11,7 +11,6 @@ export default function Staff({ user, lang = 'en' }) {
   const [staff, setStaff] = useState([])
   const [locations, setLocations] = useState([])
   const [shifts, setShifts] = useState([])
-  const [jobRoles, setJobRoles] = useState([])
   const [activities, setActivities] = useState([])
   const [operationalActivitiesByUserId, setOperationalActivitiesByUserId] = useState({}) // { [userId]: activityId[] }
   const [loading, setLoading] = useState(true)
@@ -26,7 +25,6 @@ export default function Staff({ user, lang = 'en' }) {
     email: '',
     phone: '',
     role: 'staff',
-    job_role: '',
     is_active: true,
     location_id: null,
     shift_id: null,
@@ -45,16 +43,14 @@ export default function Staff({ user, lang = 'en' }) {
 
   const fetchReferenceData = async () => {
     try {
-      const [locRes, shiftRes, jobRoleRes, actRes] = await Promise.all([
+      const [locRes, shiftRes, actRes] = await Promise.all([
         supabase.from('locations').select('id, name, code').eq('org_id', user.org_id).eq('is_active', true).order('name'),
         supabase.from('shifts').select('id, name, code, start_time, end_time').eq('org_id', user.org_id).eq('is_active', true).order('start_time'),
-        supabase.from('job_roles').select('id, name, code, department').eq('org_id', user.org_id).eq('is_active', true).order('name'),
         supabase.from('housekeeping_activities').select('id, name, code').eq('org_id', user.org_id).eq('is_active', true).order('sequence_order'),
       ])
 
       if (!locRes.error) setLocations(locRes.data || [])
       if (!shiftRes.error) setShifts(shiftRes.data || [])
-      if (!jobRoleRes.error) setJobRoles(jobRoleRes.data || [])
       if (!actRes.error) setActivities(actRes.data || [])
     } catch (error) {
       console.error('Error fetching reference data:', error)
@@ -120,7 +116,6 @@ export default function Staff({ user, lang = 'en' }) {
       email: '',
       phone: '',
       role: 'staff',
-      job_role: '',
       is_active: true,
       location_id: null,
       shift_id: null,
@@ -137,7 +132,6 @@ export default function Staff({ user, lang = 'en' }) {
       email: member.email,
       phone: member.phone || '',
       role: member.role,
-      job_role: member.job_role || '',
       is_active: member.is_active,
       location_id: member.location_id || null,
       shift_id: member.shift_id || null,
@@ -391,11 +385,6 @@ export default function Staff({ user, lang = 'en' }) {
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(member.role)}`}>
                         {member.role.replace('_', ' ')}
                       </span>
-                      {member.job_role && (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold border bg-green-100 text-green-700 border-green-200">
-                          {member.job_role}
-                        </span>
-                      )}
                     </div>
                     {getOperationalActivitiesLabel(member.id) ? (
                       <div className="text-xs text-gray-600 mt-1">{getOperationalActivitiesLabel(member.id)}</div>
@@ -641,31 +630,6 @@ export default function Staff({ user, lang = 'en' }) {
                     isClearable
                     isSearchable
                     placeholder="Select location"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Job Role</label>
-                  <Select
-                    value={
-                      formData.job_role
-                        ? {
-                            value: formData.job_role,
-                            label: jobRoles.find((jr) => jr.code === formData.job_role)
-                              ? `${jobRoles.find((jr) => jr.code === formData.job_role)?.name} (${formData.job_role})`
-                              : formData.job_role,
-                          }
-                        : null
-                    }
-                    onChange={(option) => setFormData({ ...formData, job_role: option?.value || '' })}
-                    options={jobRoles.map((jr) => ({
-                      value: jr.code,
-                      label: `${jr.name} (${jr.code}) - ${jr.department}`,
-                    }))}
-                    styles={customSelectStyles}
-                    isClearable
-                    isSearchable
-                    placeholder="Select job role"
                   />
                 </div>
 
