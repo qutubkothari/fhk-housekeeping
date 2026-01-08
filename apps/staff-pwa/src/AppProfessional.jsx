@@ -727,6 +727,7 @@ function App() {
         'bulk-assignment': ['admin', 'super_admin'],
         'location-master': ['admin', 'super_admin'],
         'shift-master': ['admin', 'super_admin'],
+        'job-role-master': ['admin', 'super_admin'],
         'vendor-management': ['admin', 'super_admin'],
         'procurement': ['admin', 'super_admin'],
         'settings': ['admin', 'super_admin'],
