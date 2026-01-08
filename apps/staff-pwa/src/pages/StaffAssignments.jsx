@@ -17,16 +17,14 @@ export default function StaffAssignments({ user }) {
   const [editAssignment, setEditAssignment] = useState(null)
   const [editAssignedTo, setEditAssignedTo] = useState('')
 
-  const handleDeleteActivityAssignment = async (assignmentId) => {
+  const handleDeleteActivityAssignment = async (assignment) => {
     if (!confirm('Are you sure you want to delete this activity assignment?')) {
       return
     }
 
     try {
-      const { error } = await supabase
-        .from('activity_assignments')
-        .delete()
-        .eq('id', assignmentId)
+      const table = assignment?.source === 'general_activity_assignments' ? 'general_activity_assignments' : 'activity_assignments'
+      const { error } = await supabase.from(table).delete().eq('id', assignment.id)
 
       if (error) throw error
 
@@ -38,16 +36,14 @@ export default function StaffAssignments({ user }) {
     }
   }
 
-  const handleCancelActivityAssignment = async (assignmentId) => {
+  const handleCancelActivityAssignment = async (assignment) => {
     if (!confirm('Are you sure you want to cancel this activity assignment?')) {
       return
     }
 
     try {
-      const { error } = await supabase
-        .from('activity_assignments')
-        .update({ status: 'cancelled' })
-        .eq('id', assignmentId)
+      const table = assignment?.source === 'general_activity_assignments' ? 'general_activity_assignments' : 'activity_assignments'
+      const { error } = await supabase.from(table).update({ status: 'cancelled' }).eq('id', assignment.id)
 
       if (error) throw error
 
@@ -76,10 +72,8 @@ export default function StaffAssignments({ user }) {
     if (!editAssignedTo) return
 
     try {
-      const { error } = await supabase
-        .from('activity_assignments')
-        .update({ assigned_to: editAssignedTo })
-        .eq('id', editAssignment.id)
+      const table = editAssignment?.source === 'general_activity_assignments' ? 'general_activity_assignments' : 'activity_assignments'
+      const { error } = await supabase.from(table).update({ assigned_to: editAssignedTo }).eq('id', editAssignment.id)
 
       if (error) throw error
 
@@ -138,16 +132,59 @@ export default function StaffAssignments({ user }) {
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false })
 
+      // General (no-room) assignments for the selected date (best-effort)
+      let generalRows = []
+      try {
+        const { data: generalAssignments, error: generalError } = await supabase
+          .from('general_activity_assignments')
+          .select(
+            `
+              id,
+              assignment_type,
+              status,
+              assigned_to,
+              notes,
+              created_at,
+              housekeeping_activities (name, sequence_order)
+            `
+          )
+          .eq('org_id', user.org_id)
+          .eq('assignment_date', filterDate)
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+
+        if (!generalError) {
+          const staffById = new Map((staffData || []).map(s => [s.id, s]))
+          generalRows = (generalAssignments || []).map((ga) => {
+            const staffMember = staffById.get(ga.assigned_to)
+            return {
+              id: ga.id,
+              source: 'general_activity_assignments',
+              assigned_to: ga.assigned_to,
+              status: ga.status,
+              assignment_type: ga.assignment_type,
+              completion_percentage: 0,
+              rooms: null,
+              activity: ga.housekeeping_activities,
+              notes: ga.notes,
+              assigned_user: staffMember ? { full_name: staffMember.full_name, role: staffMember.role } : null,
+            }
+          })
+        }
+      } catch (e) {
+        generalRows = []
+      }
+
       if (roomAssignmentsError?.code === '42P01') {
         setLegacyAssignmentsUnavailable(true)
-        setAssignments([])
+        setAssignments(generalRows)
       } else {
         if (roomAssignmentsError) throw roomAssignmentsError
         setLegacyAssignmentsUnavailable(false)
 
         const roomAssignmentIds = (roomAssignments || []).map(r => r.id)
         if (roomAssignmentIds.length === 0) {
-          setAssignments([])
+          setAssignments(generalRows)
         } else {
           const { data: activityAssignments, error: activityAssignmentsError } = await supabase
             .from('activity_assignments')
@@ -174,6 +211,7 @@ export default function StaffAssignments({ user }) {
             const staffMember = staffById.get(a.assigned_to)
             return {
               id: a.id,
+              source: 'activity_assignments',
               assigned_to: a.assigned_to,
               status: a.status,
               room_assignment_id: a.room_assignment_id,
@@ -181,11 +219,12 @@ export default function StaffAssignments({ user }) {
               completion_percentage: ra?.completion_percentage ?? 0,
               rooms: ra?.rooms,
               activity: a.housekeeping_activities,
+              notes: a.notes,
               assigned_user: staffMember ? { full_name: staffMember.full_name, role: staffMember.role } : null,
             }
           })
 
-          setAssignments(rows)
+          setAssignments([...rows, ...generalRows])
         }
       }
 
@@ -368,13 +407,20 @@ export default function StaffAssignments({ user }) {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h4 className="font-bold text-lg text-gray-900">
-                            Room {assignment.rooms?.room_number}
+                            {assignment.source === 'general_activity_assignments'
+                              ? 'General (No Room)'
+                              : `Room ${assignment.rooms?.room_number}`}
                           </h4>
-                          <p className="text-sm text-gray-500">Floor {assignment.rooms?.floor}</p>
+                          {assignment.source !== 'general_activity_assignments' && (
+                            <p className="text-sm text-gray-500">Floor {assignment.rooms?.floor}</p>
+                          )}
                           {assignment.activity?.name && (
                             <p className="text-sm text-gray-700 mt-1">
                               {assignment.activity.name}
                             </p>
+                          )}
+                          {assignment.notes && (
+                            <p className="text-sm text-gray-500 mt-1 italic">{assignment.notes}</p>
                           )}
                         </div>
                         <div className="flex flex-col gap-2">
@@ -391,10 +437,12 @@ export default function StaffAssignments({ user }) {
                             {(assignment.assignment_type || 'assignment').replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-gray-600">Room Completion:</span>
-                          <span className="text-gray-900 font-semibold">{assignment.completion_percentage || 0}%</span>
-                        </div>
+                        {assignment.source !== 'general_activity_assignments' && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-gray-600">Room Completion:</span>
+                            <span className="text-gray-900 font-semibold">{assignment.completion_percentage || 0}%</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Action Buttons */}
@@ -409,7 +457,7 @@ export default function StaffAssignments({ user }) {
                             Reassign
                           </button>
                           <button
-                            onClick={() => handleCancelActivityAssignment(assignment.id)}
+                            onClick={() => handleCancelActivityAssignment(assignment)}
                             className="flex-1 px-3 py-1.5 text-sm bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors flex items-center justify-center gap-1"
                             title="Cancel"
                           >
@@ -417,7 +465,7 @@ export default function StaffAssignments({ user }) {
                             Cancel
                           </button>
                           <button
-                            onClick={() => handleDeleteActivityAssignment(assignment.id)}
+                            onClick={() => handleDeleteActivityAssignment(assignment)}
                             className="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center"
                             title="Delete"
                           >
@@ -428,7 +476,7 @@ export default function StaffAssignments({ user }) {
                       {assignment.status !== 'pending' && (
                         <div className="flex gap-2 pt-3 border-t border-gray-200">
                           <button
-                            onClick={() => handleDeleteActivityAssignment(assignment.id)}
+                            onClick={() => handleDeleteActivityAssignment(assignment)}
                             className="w-full px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-1"
                             title="Delete"
                           >
@@ -454,7 +502,9 @@ export default function StaffAssignments({ user }) {
               <div>
                 <h3 className="text-xl font-bold text-gray-900">Reassign</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Room {editAssignment.rooms?.room_number} – {editAssignment.activity?.name || 'Activity'}
+                  {editAssignment.source === 'general_activity_assignments'
+                    ? `General – ${editAssignment.activity?.name || 'Activity'}`
+                    : `Room ${editAssignment.rooms?.room_number} – ${editAssignment.activity?.name || 'Activity'}`}
                 </p>
               </div>
               <button onClick={closeEdit} className="p-2 hover:bg-gray-100 rounded-lg" title="Close">
