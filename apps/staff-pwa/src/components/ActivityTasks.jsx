@@ -32,7 +32,7 @@ export default function ActivityTasks({ lang, user }) {
     try {
       // Get room assignments with activity assignments for this user
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/activity_assignments?assigned_to=eq.${user.id}&status=in.(pending,in_progress)&select=*,room_assignments(*,rooms(*)),housekeeping_activities(*)&order=created_at.desc`,
+        `${SUPABASE_URL}/rest/v1/activity_assignments?assigned_to=eq.${user.id}&status=in.(pending,in_progress,completed,pending_inspection)&select=*,room_assignments(*,rooms(*)),housekeeping_activities(*)&order=created_at.desc`,
         {
           headers: {
             'apikey': SUPABASE_KEY,
@@ -61,7 +61,23 @@ export default function ActivityTasks({ lang, user }) {
         })
       })
 
-      setRoomAssignments(Object.values(roomMap))
+      const nextRoomAssignments = Object.values(roomMap)
+      setRoomAssignments(nextRoomAssignments)
+
+      // If a room is currently open, refresh it in-place
+      if (selectedRoom?.id) {
+        const refreshedSelected = nextRoomAssignments.find((ra) => ra.id === selectedRoom.id)
+        if (refreshedSelected) {
+          setSelectedRoom(refreshedSelected)
+          setDraftNotes((prev) => {
+            const merged = { ...prev }
+            refreshedSelected.activities.forEach((a) => {
+              if (merged[a.id] === undefined) merged[a.id] = a.notes || ''
+            })
+            return merged
+          })
+        }
+      }
     } catch (error) {
       console.error('Error loading assignments:', error)
     } finally {
@@ -92,7 +108,6 @@ export default function ActivityTasks({ lang, user }) {
       
       alert(t('activityStarted'))
       await loadAssignments()
-      setSelectedRoom(null)
     } catch (error) {
       console.error('Error starting activity:', error)
       alert(t('error'))
@@ -127,7 +142,6 @@ export default function ActivityTasks({ lang, user }) {
       
       alert(t('activityCompleted'))
       await loadAssignments()
-      setSelectedRoom(null)
     } catch (error) {
       console.error('Error completing activity:', error)
       alert(t('error'))
