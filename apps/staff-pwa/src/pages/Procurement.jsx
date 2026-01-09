@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { FileText, Plus, Eye, CheckCircle, XCircle, Package, Calendar } from 'lucide-react'
+import { FileText, Plus, Eye, CheckCircle, XCircle, Package, Calendar, X } from 'lucide-react'
 import { translations } from '../translations'
 
 export default function Procurement({ user, lang = 'en' }) {
@@ -13,6 +13,8 @@ export default function Procurement({ user, lang = 'en' }) {
   const [loading, setLoading] = useState(true)
   const [showAddPIModal, setShowAddPIModal] = useState(false)
   const [showCreateGRNModal, setShowCreateGRNModal] = useState(false)
+  const [viewInvoice, setViewInvoice] = useState(null)
+  const [viewGRN, setViewGRN] = useState(null)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [piFormData, setPIFormData] = useState({
     vendor_id: '',
@@ -58,7 +60,7 @@ export default function Procurement({ user, lang = 'en' }) {
         .select(`
           *,
           vendor:vendors(name),
-          purchase_invoice_items(*)
+          purchase_invoice_items(*, item:inventory_items(item_name_en))
         `)
         .eq('org_id', user.org_id)
         .order('created_at', { ascending: false })
@@ -73,7 +75,7 @@ export default function Procurement({ user, lang = 'en' }) {
           *,
           invoice:purchase_invoices(invoice_number, vendor:vendors(name)),
           received_by_user:users(full_name),
-          grn_items(*)
+          grn_items(*, item:inventory_items(item_name_en))
         `)
         .eq('org_id', user.org_id)
         .order('created_at', { ascending: false })
@@ -349,14 +351,24 @@ export default function Procurement({ user, lang = 'en' }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {invoice.status === 'submitted' && (
+                      <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleCreateGRN(invoice)}
-                          className="text-green-600 hover:text-green-800 font-medium"
+                          onClick={() => setViewInvoice(invoice)}
+                          className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
+                          title="View"
                         >
-                          Create GRN
+                          <Eye className="w-4 h-4" />
+                          View
                         </button>
-                      )}
+                        {invoice.status === 'submitted' && (
+                          <button
+                            onClick={() => handleCreateGRN(invoice)}
+                            className="text-green-600 hover:text-green-800 font-medium"
+                          >
+                            Create GRN
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -385,6 +397,7 @@ export default function Procurement({ user, lang = 'en' }) {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received By</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -414,6 +427,16 @@ export default function Procurement({ user, lang = 'en' }) {
                       }`}>
                         {grn.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => setViewGRN(grn)}
+                        className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
+                        title="View"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -494,9 +517,18 @@ export default function Procurement({ user, lang = 'en' }) {
                     + Add Item
                   </button>
                 </div>
+
+                {/* Column headers */}
+                <div className="grid grid-cols-6 gap-2 mb-2 text-xs font-semibold text-gray-600">
+                  <div className="col-span-2">Item</div>
+                  <div>Qty</div>
+                  <div>Price</div>
+                  <div>Total</div>
+                  <div></div>
+                </div>
                 
                 {piFormData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-5 gap-2 mb-2">
+                  <div key={index} className="grid grid-cols-6 gap-2 mb-2">
                     <select
                       value={item.item_id}
                       onChange={(e) => handleUpdatePIItem(index, 'item_id', e.target.value)}
@@ -513,7 +545,6 @@ export default function Procurement({ user, lang = 'en' }) {
                       value={item.quantity}
                       onChange={(e) => handleUpdatePIItem(index, 'quantity', parseInt(e.target.value))}
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Qty"
                       min="1"
                       required
                     />
@@ -523,10 +554,12 @@ export default function Procurement({ user, lang = 'en' }) {
                       value={item.unit_price}
                       onChange={(e) => handleUpdatePIItem(index, 'unit_price', parseFloat(e.target.value))}
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Price"
                       min="0"
                       required
                     />
+                    <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-900 flex items-center">
+                      ${(((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))).toFixed(2)}
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleRemovePIItem(index)}
@@ -621,6 +654,163 @@ export default function Procurement({ user, lang = 'en' }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Purchase Invoice Modal */}
+      {viewInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
+            <div className="bg-green-600 text-white p-6 rounded-t-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Purchase Invoice</h2>
+                <p className="text-sm text-green-100 mt-1">{viewInvoice.invoice_number}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewInvoice(null)}
+                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Vendor</div>
+                  <div className="font-semibold text-gray-900">{viewInvoice.vendor?.name || '—'}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Invoice Date</div>
+                  <div className="font-semibold text-gray-900">{new Date(viewInvoice.invoice_date).toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 font-semibold text-gray-800">Items</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-white border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {(viewInvoice.purchase_invoice_items || []).map((it) => (
+                        <tr key={it.id}>
+                          <td className="px-4 py-3 text-sm text-gray-900">{it.item?.item_name_en || 'Item'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700 text-right">{it.quantity}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700 text-right">${Number(it.unit_price).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">${Number(it.total_amount).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium">${Number(viewInvoice.total_amount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">Tax:</span>
+                  <span className="font-medium">${Number(viewInvoice.tax_amount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
+                  <span>Grand Total:</span>
+                  <span>${Number(viewInvoice.grand_total || 0).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setViewInvoice(null)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View GRN Modal */}
+      {viewGRN && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
+            <div className="bg-green-600 text-white p-6 rounded-t-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Goods Receipt Note</h2>
+                <p className="text-sm text-green-100 mt-1">{viewGRN.grn_number}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewGRN(null)}
+                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Invoice</div>
+                  <div className="font-semibold text-gray-900">{viewGRN.invoice?.invoice_number || '—'}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600">Vendor</div>
+                  <div className="font-semibold text-gray-900">{viewGRN.invoice?.vendor?.name || '—'}</div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 font-semibold text-gray-800">Items</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-white border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {(viewGRN.grn_items || []).map((it) => (
+                        <tr key={it.id}>
+                          <td className="px-4 py-3 text-sm text-gray-900">{it.item?.item_name_en || 'Item'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700 text-right">{it.received_quantity}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700 text-right">${Number(it.unit_price).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">${(((Number(it.received_quantity) || 0) * (Number(it.unit_price) || 0))).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setViewGRN(null)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
