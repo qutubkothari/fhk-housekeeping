@@ -21,6 +21,24 @@ export default function BulkAssignment({ user, lang = 'en' }) {
     return timePart
   }
 
+  const normalizeTimestamp = (value) => {
+    if (!value) return null
+    const raw = String(value)
+    // If a full datetime-local is provided, prefer it
+    if (raw.includes('T')) {
+      const dt = new Date(raw)
+      if (!Number.isNaN(dt.getTime())) return dt.toISOString()
+    }
+
+    // Otherwise treat as time-only and combine with today's date
+    const timeOnly = normalizeTimeOnly(raw)
+    if (!timeOnly) return null
+    const today = new Date().toISOString().split('T')[0]
+    const dt = new Date(`${today}T${timeOnly}:00`)
+    if (!Number.isNaN(dt.getTime())) return dt.toISOString()
+    return null
+  }
+
   const [step, setStep] = useState(1) // 1: Select Activities, 2: Select Rooms (optional), 3: Assign Staff, 4: Review
   const [viewMode, setViewMode] = useState('create') // 'create' or 'manage'
   const [rooms, setRooms] = useState([])
@@ -175,6 +193,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
       }
 
       const normalizedTargetTime = normalizeTimeOnly(assignmentData.target_completion_time)
+      const normalizedTargetTimestamp = normalizeTimestamp(assignmentData.target_completion_time)
 
       const selectedActivityAssignments = selectedActivities
         .map((activityId) => ({ activityId, staffId: activityStaffMap[activityId] }))
@@ -234,7 +253,7 @@ export default function BulkAssignment({ user, lang = 'en' }) {
         assignment_type: assignmentData.assignment_type,
         assigned_by: user.id,
         shift_id: assignmentData.shift_id,
-        target_completion_time: normalizedTargetTime,
+        target_completion_time: normalizedTargetTimestamp,
         notes: assignmentData.notes
       }))
 
