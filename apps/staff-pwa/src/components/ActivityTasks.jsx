@@ -91,7 +91,8 @@ export default function ActivityTasks({ lang, user }) {
       if (!response.ok) throw new Error('Failed to start activity')
       
       alert(t('activityStarted'))
-      loadAssignments()
+      await loadAssignments()
+      setSelectedRoom(null)
     } catch (error) {
       console.error('Error starting activity:', error)
       alert(t('error'))
@@ -125,7 +126,8 @@ export default function ActivityTasks({ lang, user }) {
       if (!response.ok) throw new Error('Failed to complete activity')
       
       alert(t('activityCompleted'))
-      loadAssignments()
+      await loadAssignments()
+      setSelectedRoom(null)
     } catch (error) {
       console.error('Error completing activity:', error)
       alert(t('error'))
