@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { FileText, Plus, Eye, CheckCircle, XCircle, Package, Calendar, X } from 'lucide-react'
+import { FileText, Plus, Eye, CheckCircle, XCircle, Package, Calendar, X, Pencil, Trash2 } from 'lucide-react'
 import { translations } from '../translations'
 
 export default function Procurement({ user, lang = 'en' }) {
@@ -17,6 +17,11 @@ export default function Procurement({ user, lang = 'en' }) {
   const [viewGRN, setViewGRN] = useState(null)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [grnItems, setGrnItems] = useState([])
+  const [invoiceModalMode, setInvoiceModalMode] = useState('create') // create | edit
+  const [editingInvoiceId, setEditingInvoiceId] = useState(null)
+  const [showEditGRNModal, setShowEditGRNModal] = useState(false)
+  const [editingGRN, setEditingGRN] = useState(null)
+  const [editingGRNItems, setEditingGRNItems] = useState([])
   const [piFormData, setPIFormData] = useState({
     vendor_id: '',
     invoice_number: '',
@@ -92,6 +97,19 @@ export default function Procurement({ user, lang = 'en' }) {
     }
   }
 
+  const resetPIForm = () => {
+    setPIFormData({
+      vendor_id: '',
+      invoice_number: '',
+      invoice_date: new Date().toISOString().split('T')[0],
+      due_date: '',
+      notes: '',
+      items: []
+    })
+    setInvoiceModalMode('create')
+    setEditingInvoiceId(null)
+  }
+
   const handleAddPIItem = () => {
     setPIFormData({
       ...piFormData,
@@ -143,59 +161,175 @@ export default function Procurement({ user, lang = 'en' }) {
 
     try {
       const totals = calculatePITotals()
-      
-      // Insert purchase invoice
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('purchase_invoices')
-        .insert([{
-          org_id: user.org_id,
-          vendor_id: piFormData.vendor_id,
-          invoice_number: piFormData.invoice_number,
-          invoice_date: piFormData.invoice_date,
-          due_date: piFormData.due_date || null,
-          total_amount: totals.subtotal,
-          tax_amount: totals.totalTax,
-          grand_total: totals.grandTotal,
-          status: 'submitted',
-          notes: piFormData.notes,
-          created_by: user.id
-        }])
-        .select()
-        .single()
 
-      if (invoiceError) throw invoiceError
+      if (invoiceModalMode === 'edit' && editingInvoiceId) {
+        // Safety: do not edit an invoice that already has GRNs
+        const { count: existingGrnCount, error: countErr } = await supabase
+          .from('goods_received_notes')
+          .select('*', { count: 'exact', head: true })
+          .eq('invoice_id', editingInvoiceId)
 
-      // Insert invoice items
-      const itemsToInsert = piFormData.items.map(item => ({
-        invoice_id: invoice.id,
-        item_id: item.item_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        tax_rate: item.tax_rate,
-        tax_amount: (item.quantity * item.unit_price * item.tax_rate) / 100,
-        total_amount: item.quantity * item.unit_price + ((item.quantity * item.unit_price * item.tax_rate) / 100)
-      }))
+        if (countErr) throw countErr
+        if ((existingGrnCount || 0) > 0) {
+          alert('Cannot edit this invoice because a GRN already exists.')
+          return
+        }
 
-      const { error: itemsError } = await supabase
-        .from('purchase_invoice_items')
-        .insert(itemsToInsert)
+        const { error: updateErr } = await supabase
+          .from('purchase_invoices')
+          .update({
+            vendor_id: piFormData.vendor_id,
+            invoice_number: piFormData.invoice_number,
+            invoice_date: piFormData.invoice_date,
+            due_date: piFormData.due_date || null,
+            total_amount: totals.subtotal,
+            tax_amount: totals.totalTax,
+            grand_total: totals.grandTotal,
+            notes: piFormData.notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingInvoiceId)
 
-      if (itemsError) throw itemsError
+        if (updateErr) throw updateErr
 
-      setShowAddPIModal(false)
-      setPIFormData({
-        vendor_id: '',
-        invoice_number: '',
-        invoice_date: new Date().toISOString().split('T')[0],
-        due_date: '',
-        notes: '',
-        items: []
-      })
-      loadData()
-      alert('Purchase Invoice created successfully!')
+        // Replace items (safe only when no GRNs exist)
+        const { error: delItemsErr } = await supabase
+          .from('purchase_invoice_items')
+          .delete()
+          .eq('invoice_id', editingInvoiceId)
+
+        if (delItemsErr) throw delItemsErr
+
+        const itemsToInsert = piFormData.items.map(item => ({
+          invoice_id: editingInvoiceId,
+          item_id: item.item_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          tax_rate: item.tax_rate,
+          tax_amount: (item.quantity * item.unit_price * item.tax_rate) / 100,
+          total_amount: item.quantity * item.unit_price + ((item.quantity * item.unit_price * item.tax_rate) / 100)
+        }))
+
+        const { error: itemsError } = await supabase
+          .from('purchase_invoice_items')
+          .insert(itemsToInsert)
+
+        if (itemsError) throw itemsError
+
+        setShowAddPIModal(false)
+        resetPIForm()
+        loadData()
+        alert('Purchase Invoice updated successfully!')
+      } else {
+        // Insert purchase invoice
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('purchase_invoices')
+          .insert([{
+            org_id: user.org_id,
+            vendor_id: piFormData.vendor_id,
+            invoice_number: piFormData.invoice_number,
+            invoice_date: piFormData.invoice_date,
+            due_date: piFormData.due_date || null,
+            total_amount: totals.subtotal,
+            tax_amount: totals.totalTax,
+            grand_total: totals.grandTotal,
+            status: 'submitted',
+            notes: piFormData.notes,
+            created_by: user.id
+          }])
+          .select()
+          .single()
+
+        if (invoiceError) throw invoiceError
+
+        // Insert invoice items
+        const itemsToInsert = piFormData.items.map(item => ({
+          invoice_id: invoice.id,
+          item_id: item.item_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          tax_rate: item.tax_rate,
+          tax_amount: (item.quantity * item.unit_price * item.tax_rate) / 100,
+          total_amount: item.quantity * item.unit_price + ((item.quantity * item.unit_price * item.tax_rate) / 100)
+        }))
+
+        const { error: itemsError } = await supabase
+          .from('purchase_invoice_items')
+          .insert(itemsToInsert)
+
+        if (itemsError) throw itemsError
+
+        setShowAddPIModal(false)
+        resetPIForm()
+        loadData()
+        alert('Purchase Invoice created successfully!')
+      }
     } catch (error) {
       console.error('Error creating PI:', error)
       alert('Failed to create Purchase Invoice: ' + error.message)
+    }
+  }
+
+  const handleEditInvoice = async (invoice) => {
+    // Only allow editing when no GRN exists
+    const { count: existingGrnCount, error: countErr } = await supabase
+      .from('goods_received_notes')
+      .select('*', { count: 'exact', head: true })
+      .eq('invoice_id', invoice.id)
+
+    if (countErr) {
+      alert('Failed to check GRN status: ' + countErr.message)
+      return
+    }
+
+    if ((existingGrnCount || 0) > 0) {
+      alert('Cannot edit this invoice because a GRN already exists.')
+      return
+    }
+
+    setInvoiceModalMode('edit')
+    setEditingInvoiceId(invoice.id)
+    setPIFormData({
+      vendor_id: invoice.vendor_id || '',
+      invoice_number: invoice.invoice_number || '',
+      invoice_date: invoice.invoice_date,
+      due_date: invoice.due_date || '',
+      notes: invoice.notes || '',
+      items: (invoice.purchase_invoice_items || []).map((it) => ({
+        item_id: it.item_id,
+        quantity: Number(it.quantity) || 1,
+        unit_price: Number(it.unit_price) || 0,
+        tax_rate: Number(it.tax_rate) || 0
+      }))
+    })
+    setShowAddPIModal(true)
+  }
+
+  const handleDeleteInvoice = async (invoice) => {
+    if (!confirm(`Delete Purchase Invoice ${invoice.invoice_number}?`)) return
+
+    try {
+      const { count: existingGrnCount, error: countErr } = await supabase
+        .from('goods_received_notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('invoice_id', invoice.id)
+
+      if (countErr) throw countErr
+      if ((existingGrnCount || 0) > 0) {
+        alert('Cannot delete this invoice because a GRN already exists.')
+        return
+      }
+
+      const { error } = await supabase
+        .from('purchase_invoices')
+        .delete()
+        .eq('id', invoice.id)
+
+      if (error) throw error
+      await loadData()
+      alert('Purchase Invoice deleted.')
+    } catch (error) {
+      alert('Failed to delete invoice: ' + error.message)
     }
   }
 
@@ -218,6 +352,97 @@ export default function Procurement({ user, lang = 'en' }) {
     const next = [...grnItems]
     next[index] = { ...next[index], [field]: value }
     setGrnItems(next)
+  }
+
+  const openEditGRN = (grn) => {
+    setEditingGRN(grn)
+    setEditingGRNItems(
+      (grn.grn_items || []).map((it) => ({
+        id: it.id,
+        item_id: it.item_id,
+        item_name: it.item?.item_name_en,
+        ordered_quantity: Number(it.ordered_quantity) || 0,
+        received_quantity: Number(it.received_quantity) || 0,
+        unit_price: Number(it.unit_price) || 0
+      }))
+    )
+    setShowEditGRNModal(true)
+  }
+
+  const updateEditingGRNItem = (index, field, value) => {
+    const next = [...editingGRNItems]
+    next[index] = { ...next[index], [field]: value }
+    setEditingGRNItems(next)
+  }
+
+  const calculateEditingGRNTotals = () => {
+    const subtotal = (editingGRNItems || []).reduce((sum, it) => {
+      return sum + (Number(it.received_quantity) || 0) * (Number(it.unit_price) || 0)
+    }, 0)
+    return { subtotal }
+  }
+
+  const handleSaveEditedGRN = async (e) => {
+    e.preventDefault()
+    if (!editingGRN) return
+
+    try {
+      const hasAnyReceived = (editingGRNItems || []).some((it) => (Number(it.received_quantity) || 0) > 0)
+      const isFullyReceived = (editingGRNItems || []).every((it) => (Number(it.received_quantity) || 0) >= (Number(it.ordered_quantity) || 0))
+      const status = !hasAnyReceived ? 'rejected' : (isFullyReceived ? 'accepted' : 'partial')
+
+      // Update GRN header
+      const { error: grnHeaderErr } = await supabase
+        .from('goods_received_notes')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', editingGRN.id)
+
+      if (grnHeaderErr) throw grnHeaderErr
+
+      // Update items (this relies on DB trigger being delta-safe)
+      for (const it of editingGRNItems) {
+        const orderedQty = Number(it.ordered_quantity) || 0
+        const receivedQty = Number(it.received_quantity) || 0
+        const acceptedQty = receivedQty
+        const rejectedQty = Math.max(orderedQty - receivedQty, 0)
+
+        const { error: updateErr } = await supabase
+          .from('grn_items')
+          .update({
+            received_quantity: receivedQty,
+            accepted_quantity: acceptedQty,
+            rejected_quantity: rejectedQty
+          })
+          .eq('id', it.id)
+
+        if (updateErr) throw updateErr
+      }
+
+      setShowEditGRNModal(false)
+      setEditingGRN(null)
+      setEditingGRNItems([])
+      await loadData()
+      alert('GRN updated successfully!')
+    } catch (error) {
+      alert('Failed to update GRN: ' + error.message)
+    }
+  }
+
+  const handleDeleteGRN = async (grn) => {
+    if (!confirm(`Delete GRN ${grn.grn_number}? This will reduce inventory by the accepted quantities.`)) return
+
+    try {
+      const { error } = await supabase
+        .from('goods_received_notes')
+        .delete()
+        .eq('id', grn.id)
+
+      if (error) throw error
+      await loadData()
+      alert('GRN deleted.')
+    } catch (error) {
+      alert('Failed to delete GRN: ' + error.message)
+    }
   }
 
   const calculateGRNTotals = () => {
@@ -397,6 +622,22 @@ export default function Procurement({ user, lang = 'en' }) {
                           <Eye className="w-4 h-4" />
                           View
                         </button>
+                        <button
+                          onClick={() => handleEditInvoice(invoice)}
+                          className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInvoice(invoice)}
+                          className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                         {invoice.status === 'submitted' && (
                           <button
                             onClick={() => handleCreateGRN(invoice)}
@@ -466,14 +707,32 @@ export default function Procurement({ user, lang = 'en' }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => setViewGRN(grn)}
-                        className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setViewGRN(grn)}
+                          className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </button>
+                        <button
+                          onClick={() => openEditGRN(grn)}
+                          className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGRN(grn)}
+                          className="inline-flex items-center gap-1 text-red-600 hover:text-red-800 font-medium"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -494,7 +753,7 @@ export default function Procurement({ user, lang = 'en' }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
             <div className="bg-green-600 text-white p-6 rounded-t-xl">
-              <h2 className="text-xl font-bold">New Purchase Invoice</h2>
+              <h2 className="text-xl font-bold">{invoiceModalMode === 'edit' ? 'Edit Purchase Invoice' : 'New Purchase Invoice'}</h2>
             </div>
             <form onSubmit={handleSubmitPI} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -628,7 +887,10 @@ export default function Procurement({ user, lang = 'en' }) {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAddPIModal(false)}
+                  onClick={() => {
+                    setShowAddPIModal(false)
+                    resetPIForm()
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
@@ -637,7 +899,7 @@ export default function Procurement({ user, lang = 'en' }) {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
-                  Create Invoice
+                  {invoiceModalMode === 'edit' ? 'Save Changes' : 'Create Invoice'}
                 </button>
               </div>
             </form>
@@ -736,6 +998,100 @@ export default function Procurement({ user, lang = 'en' }) {
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >
                   Create GRN & Update Stock
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit GRN Modal */}
+      {showEditGRNModal && editingGRN && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8">
+            <div className="bg-green-600 text-white p-6 rounded-t-xl flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Edit Goods Receipt Note</h2>
+                <p className="text-sm text-green-100 mt-1">{editingGRN.grn_number}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditGRNModal(false)
+                  setEditingGRN(null)
+                  setEditingGRNItems([])
+                }}
+                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedGRN} className="p-6 space-y-4">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 font-semibold text-gray-800">Items</div>
+
+                <div className="p-4 space-y-2">
+                  <div className="grid grid-cols-5 gap-2 text-xs font-semibold text-gray-600">
+                    <div className="col-span-2">Item</div>
+                    <div>Qty</div>
+                    <div>Price</div>
+                    <div>Total</div>
+                  </div>
+
+                  {(editingGRNItems || []).map((it, idx) => (
+                    <div key={it.id || idx} className="grid grid-cols-5 gap-2 items-center">
+                      <div className="col-span-2">
+                        <div className="text-sm font-medium text-gray-900">{it.item_name || 'Item'}</div>
+                        <div className="text-xs text-gray-500">Ordered: {it.ordered_quantity}</div>
+                      </div>
+
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={it.received_quantity}
+                        onChange={(e) => updateEditingGRNItem(idx, 'received_quantity', parseInt(e.target.value || '0', 10))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+
+                      <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-900 text-right">
+                        ${Number(it.unit_price || 0).toFixed(2)}
+                      </div>
+
+                      <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-900 text-right font-medium">
+                        ${(((Number(it.received_quantity) || 0) * (Number(it.unit_price) || 0))).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total:</span>
+                  <span className="font-semibold">${calculateEditingGRNTotals().subtotal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditGRNModal(false)
+                    setEditingGRN(null)
+                    setEditingGRNItems([])
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
